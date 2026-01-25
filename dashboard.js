@@ -1,8 +1,10 @@
 const API_BASE = "https://smart-retail-system-sz0s.onrender.com";
 
-let chart;
+let chartInstance = null;
 
+// ===============================
 // SUMMARY
+// ===============================
 async function loadSummary() {
   const res = await fetch(`${API_BASE}/analytics/summary`);
   const data = await res.json();
@@ -11,31 +13,57 @@ async function loadSummary() {
   document.getElementById("totalSales").innerText = data.total_sales;
 }
 
-// TREND CHART
+// ===============================
+// SALES TREND CHART
+// ===============================
 async function loadTrend(type) {
   const res = await fetch(`${API_BASE}/analytics/${type}`);
   const data = await res.json();
 
+  if (!data || data.length === 0) {
+    alert("No sales data available");
+    return;
+  }
+
   const labels = data.map(d => d.period);
   const values = data.map(d => d.revenue);
 
-  if (chart) chart.destroy();
+  const ctx = document.getElementById("trendChart").getContext("2d");
 
-  chart = new Chart(document.getElementById("trendChart"), {
+  if (chartInstance) {
+    chartInstance.destroy();
+  }
+
+  chartInstance = new Chart(ctx, {
     type: "line",
     data: {
-      labels,
+      labels: labels,
       datasets: [{
         label: `${type.toUpperCase()} Revenue`,
         data: values,
         borderColor: "#2563eb",
+        backgroundColor: "rgba(37, 99, 235, 0.2)",
+        tension: 0.4,
         fill: true
       }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: true }
+      },
+      scales: {
+        y: {
+          beginAtZero: true
+        }
+      }
     }
   });
 }
 
+// ===============================
 // STOCK PREDICTION
+// ===============================
 async function loadPrediction() {
   const res = await fetch(`${API_BASE}/analytics/stock-prediction`);
   const data = await res.json();
@@ -56,7 +84,9 @@ async function loadPrediction() {
   });
 }
 
+// ===============================
 // INIT
+// ===============================
 window.onload = () => {
   loadSummary();
   loadTrend("weekly");
