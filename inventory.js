@@ -7,23 +7,28 @@ async function loadProducts() {
   const res = await fetch(`${API_BASE}/products`);
   const data = await res.json();
 
-  const table = document.getElementById("products");
-  table.innerHTML = "";
+  const tbody = document.getElementById("products");
+  tbody.innerHTML = "";
 
   data.forEach(p => {
     const row = document.createElement("tr");
+
     row.innerHTML = `
       <td>${p.id}</td>
       <td>${p.name}</td>
-      <td>${p.price}</td>
+      <td>₹${p.price}</td>
       <td>${p.stock}</td>
       <td>
-        <button class="danger" onclick="deleteProduct(${p.id})">Delete</button>
+        <button class="danger" onclick="deleteProduct(${p.id})">
+          Delete
+        </button>
       </td>
     `;
-    table.appendChild(row);
+
+    tbody.appendChild(row);
   });
 }
+
 
 // ================================
 // ADD PRODUCT
