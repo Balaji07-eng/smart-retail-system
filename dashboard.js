@@ -147,7 +147,10 @@ async function loadYearlyChart() {
 // ================================
 window.onload = () => {
   loadSummary();
-  loadSalesTrend();
-  loadPayments();
   loadTopProducts();
+  loadPayments();
+  loadStockPrediction();
+  loadWeeklyChart();
+  loadMonthlyChart();
+  loadYearlyChart();
 };
