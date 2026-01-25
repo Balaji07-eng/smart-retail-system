@@ -67,6 +67,16 @@ async function loadPrediction() {
     `;
   });
 }
+async function loadSummary() {
+  const res = await fetch(`${API_BASE}/analytics/summary`);
+  const data = await res.json();
+
+  document.getElementById("revenue").innerText = `₹${data.total_revenue}`;
+  document.getElementById("sales").innerText = data.total_sales;
+  document.getElementById("profit").innerText = `₹${data.total_profit}`;
+}
+
+loadSummary();
 
 // INIT
 window.onload = () => {
