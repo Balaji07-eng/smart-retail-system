@@ -28,9 +28,9 @@ def get_products():
 @products_bp.route("/products", methods=["POST"])
 def add_product():
     data = request.json
+
     conn = connect_db()
     cursor = conn.cursor()
-
     cursor.execute(
         "INSERT INTO products (name, price, stock) VALUES (?, ?, ?)",
         (data["name"], data["price"], data["stock"])
