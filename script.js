@@ -1,10 +1,9 @@
 // ================================
 // CONFIG
 // ================================
-
-// ✅ Render backend URL (KEEP THIS)
 const API_BASE = "https://smart-retail-system-sz0s.onrender.com";
 
+// ================================
 let products = [];
 let cart = [];
 
@@ -21,6 +20,7 @@ async function loadProducts() {
 
     products.forEach(p => {
       const row = document.createElement("tr");
+
       row.innerHTML = `
         <td>${p.id}</td>
         <td>${p.name}</td>
@@ -28,15 +28,17 @@ async function loadProducts() {
         <td>${p.stock}</td>
         <td>
           <input type="number" min="1" max="${p.stock}" value="1" id="qty-${p.id}">
+        </td>
+        <td>
           <button onclick="addToCart(${p.id})">Add</button>
         </td>
       `;
+
       list.appendChild(row);
     });
 
-  } catch (error) {
+  } catch (err) {
     alert("❌ Cannot connect to backend");
-    console.error(error);
   }
 }
 
@@ -44,24 +46,17 @@ async function loadProducts() {
 // ADD TO CART
 // ================================
 function addToCart(productId) {
-  const qtyInput = document.getElementById(`qty-${productId}`);
-  const qty = parseInt(qtyInput.value);
-
+  const qty = parseInt(document.getElementById(`qty-${productId}`).value);
   const product = products.find(p => p.id === productId);
+
   if (!product || qty <= 0) return;
 
-  // If product already in cart → increase quantity
-  const existing = cart.find(i => i.product_id === productId);
-  if (existing) {
-    existing.quantity += qty;
-  } else {
-    cart.push({
-      product_id: productId,
-      name: product.name,
-      price: product.price,
-      quantity: qty
-    });
-  }
+  cart.push({
+    product_id: productId,
+    name: product.name,
+    price: product.price,
+    quantity: qty
+  });
 
   renderCart();
 }
@@ -76,11 +71,10 @@ function renderCart() {
   let total = 0;
 
   cart.forEach(item => {
-    const subtotal = item.price * item.quantity;
-    total += subtotal;
+    total += item.price * item.quantity;
 
     const li = document.createElement("li");
-    li.textContent = `${item.name} × ${item.quantity} = ₹${subtotal}`;
+    li.textContent = `${item.name} x ${item.quantity} = ₹${item.price * item.quantity}`;
     cartList.appendChild(li);
   });
 
@@ -91,21 +85,21 @@ function renderCart() {
 // CREATE BILL
 // ================================
 async function createBill() {
-  const name = document.getElementById("customer-name").value.trim();
-  const phone = document.getElementById("customer-phone").value.trim();
+  const name = document.getElementById("customer-name").value;
+  const phone = document.getElementById("customer-phone").value;
   const payment = document.getElementById("payment-mode").value;
 
   if (!name || !phone || cart.length === 0) {
-    alert("⚠️ Enter customer details and add items");
+    alert("⚠ Fill customer details and add items");
     return;
   }
 
   const payload = {
     customer: { name, phone },
-    payment,
-    items: cart.map(item => ({
-      product_id: item.product_id,
-      quantity: item.quantity
+    payment: payment,
+    items: cart.map(i => ({
+      product_id: i.product_id,
+      quantity: i.quantity
     }))
   };
 
@@ -118,25 +112,17 @@ async function createBill() {
 
     const data = await res.json();
 
-    if (!res.ok) {
-      alert(data.error || "❌ Billing failed");
-      return;
+    if (res.ok) {
+      alert(`✅ Bill Generated\nSale ID: ${data.sale_id}\nTotal: ₹${data.total}`);
+      cart = [];
+      renderCart();
+      loadProducts();
+    } else {
+      alert(data.error || "Billing failed");
     }
 
-    alert(
-      `✅ Bill Generated!\n\nSale ID: ${data.sale_id}\nTotal: ₹${data.total}`
-    );
-
-    cart = [];
-    renderCart();
-    loadProducts();
-
-    document.getElementById("customer-name").value = "";
-    document.getElementById("customer-phone").value = "";
-
-  } catch (error) {
+  } catch (err) {
     alert("❌ Server error");
-    console.error(error);
   }
 }
 
