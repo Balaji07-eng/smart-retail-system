@@ -73,13 +73,20 @@
   </div>
 
   <!-- TREND -->
-  <div class="chart-box">
-    <h3>Sales Trend</h3>
-    <button onclick="loadTrend('weekly')">Weekly</button>
-    <button onclick="loadTrend('monthly')">Monthly</button>
-    <button onclick="loadTrend('yearly')">Yearly</button>
-    <canvas id="trendChart"></canvas>
-  </div>
+<div class="chart-box">
+  <h3>Sales Trend</h3>
+
+  <button onclick="loadTrend('weekly')">Weekly</button>
+  <button onclick="loadTrend('monthly')">Monthly</button>
+  <button onclick="loadTrend('yearly')">Yearly</button>
+
+  <!-- IMPORTANT: set height -->
+  <canvas id="trendChart" height="120"></canvas>
+</div>
+
+<!-- Load Chart.js FIRST -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="dashboard.js"></script>
 
   <!-- STOCK PREDICTION -->
   <div class="table-box">
