@@ -73,6 +73,26 @@ async function loadTopProducts() {
     }
   });
 }
+const API_BASE = "https://smart-retail-system-sz0s.onrender.com";
+
+async function loadStockPrediction() {
+  const res = await fetch(`${API_BASE}/analytics/stock-prediction`);
+  const data = await res.json();
+
+  const table = document.getElementById("prediction-table");
+  table.innerHTML = "";
+
+  data.forEach(p => {
+    const row = document.createElement("tr");
+    row.innerHTML = `
+      <td>${p.product_id}</td>
+      <td>${p.name}</td>
+      <td>${p.avg_daily_sales}</td>
+      <td><b>${p.recommended_stock}</b></td>
+    `;
+    table.appendChild(row);
+  });
+}
 
 // ================================
 // INIT
