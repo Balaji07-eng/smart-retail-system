@@ -1,2 +1,1 @@
-backend/start.sh
-
+gunicorn app:app
