@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Inventory Management</title>
+</head>
+<body>
+
+<h2>Add Product</h2>
+<input id="name" placeholder="Product Name">
+<input id="price" placeholder="Price">
+<input id="stock" placeholder="Initial Stock">
+<button onclick="addProduct()">Add</button>
+
+<hr>
+
+<h2>Increase Stock</h2>
+<input id="productId" placeholder="Product ID">
+<input id="addStock" placeholder="Quantity">
+<button onclick="increaseStock()">Update Stock</button>
+
+<hr>
+
+<h2>Current Products</h2>
+<ul id="products"></ul>
+
+<script src="inventory.js"></script>
+</body>
+</html>
