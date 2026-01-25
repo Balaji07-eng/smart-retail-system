@@ -368,6 +368,18 @@ def update_stock(product_id):
 
     return {"message": "Stock updated successfully"}
 
+@app.route("/products/<int:product_id>", methods=["DELETE"])
+def delete_product(product_id):
+    conn = connect_db()
+    cursor = conn.cursor()
+
+    cursor.execute("DELETE FROM products WHERE id = ?", (product_id,))
+    conn.commit()
+    conn.close()
+
+    return {"message": "Product deleted successfully"}
+
+
 # -------------------------------
 # RUN SERVER
 # -------------------------------
