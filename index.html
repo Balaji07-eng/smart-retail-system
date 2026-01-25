@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>Smart Retail POS System</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <style>
     body {
@@ -91,9 +91,7 @@
         <th>Action</th>
       </tr>
     </thead>
-    <tbody id="product-list">
-      <!-- Loaded dynamically -->
-    </tbody>
+    <tbody id="product-list"></tbody>
   </table>
 </section>
 
@@ -126,12 +124,9 @@
   <br><br>
   <button onclick="createBill()">Generate Bill</button>
 </section>
-<script>
-  if (!localStorage.getItem("role")) {
-    window.location.href = "login.html";
-  }
-</script>
 
-<script src="script.js"></script>
+<!-- IMPORTANT: script path must be RELATIVE -->
+<script src="./script.js"></script>
+
 </body>
 </html>
