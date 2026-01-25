@@ -126,6 +126,11 @@
   <br><br>
   <button onclick="createBill()">Generate Bill</button>
 </section>
+<script>
+  if (!localStorage.getItem("role")) {
+    window.location.href = "login.html";
+  }
+</script>
 
 <script src="script.js"></script>
 </body>
