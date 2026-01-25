@@ -64,32 +64,34 @@ async function addProduct() {
 // UPDATE STOCK (✅ FIXED)
 // ================================
 async function increaseStock() {
-  const productId = Number(document.getElementById("productId").value);
-  const quantity = Number(document.getElementById("addStock").value);
+  const productId = document.getElementById("productId").value;
+  const quantity = document.getElementById("addStock").value;
 
-  if (!productId || quantity <= 0) {
+  if (!productId || !quantity || quantity <= 0) {
     alert("Enter valid Product ID and Quantity");
     return;
   }
 
-  const res = await fetch(`${API_BASE}/products/stock`, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      product_id: productId,
-      quantity: quantity
-    })
-  });
+  const res = await fetch(
+    `${API_BASE}/products/${productId}/stock`,
+    {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        quantity: Number(quantity)
+      })
+    }
+  );
 
   const data = await res.json();
 
   if (res.ok) {
-    alert("Stock updated successfully");
+    alert("✅ Stock updated successfully");
     loadProducts();
     document.getElementById("productId").value = "";
     document.getElementById("addStock").value = "";
   } else {
-    alert(data.error || "Stock update failed");
+    alert(data.error || "❌ Failed to update stock");
   }
 }
 
