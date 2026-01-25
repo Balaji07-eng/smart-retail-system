@@ -101,7 +101,7 @@ let products = [];
 let cart = [];
 let total = 0;
 
-fetch("http://127.0.0.1:5000/products")
+fetch("https://smart-retail-backend.onrender.com/products")
     .then(res => res.json())
     .then(data => {
         products = data;
@@ -137,7 +137,7 @@ function addToCart() {
 }
 
 function generateBill() {
-    fetch("http://127.0.0.1:5000/bill", {
+    fetch("https://smart-retail-backend.onrender.com/bill", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
