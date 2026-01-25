@@ -96,6 +96,16 @@ async function deleteProduct(id) {
   alert("Product deleted");
   loadProducts();
 }
+async function predictStock(productId) {
+  const res = await fetch(`${API_BASE}/predict/${productId}?days=7`);
+  const data = await res.json();
+
+  alert(`
+Product ID: ${productId}
+Avg Daily Sales: ${data.avg_daily_sales}
+Recommended Stock for ${data.days} days: ${data.recommended_stock}
+  `);
+}
 
 // ================================
 // INIT
