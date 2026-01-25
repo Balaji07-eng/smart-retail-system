@@ -347,6 +347,26 @@ def customer_history(customer_id):
         }
         for r in rows
     ])
+@app.route("/products/<int:product_id>/stock", methods=["PATCH"])
+def update_stock(product_id):
+    data = request.get_json()
+    quantity = data.get("quantity")
+
+    if quantity is None or quantity <= 0:
+        return {"error": "Invalid quantity"}, 400
+
+    conn = connect_db()
+    cursor = conn.cursor()
+
+    cursor.execute(
+        "UPDATE products SET stock = stock + ? WHERE id = ?",
+        (quantity, product_id)
+    )
+
+    conn.commit()
+    conn.close()
+
+    return {"message": "Stock updated successfully"}
 
 # -------------------------------
 # RUN SERVER
