@@ -3,7 +3,7 @@
 // ================================
 
 // 🔴 CHANGE THIS when backend is deployed online (Render)
-const API_BASE = "http://127.0.0.1:5000";
+const API_BASE = "https://smart-retail-system-sz0s.onrender.com";
 // Example later:
 // const API_BASE = "https://your-app-name.onrender.com";
 
