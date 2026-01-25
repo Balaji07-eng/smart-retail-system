@@ -1,10 +1,7 @@
-// ================================
-// CONFIG
-// ================================
 const API_BASE = "https://smart-retail-system-sz0s.onrender.com";
 
 // ================================
-// LOAD SUMMARY
+// SUMMARY CARDS
 // ================================
 async function loadSummary() {
   const res = await fetch(`${API_BASE}/analytics/summary`);
@@ -15,53 +12,65 @@ async function loadSummary() {
 }
 
 // ================================
-// LOAD TOP PRODUCTS
+// SALES TREND (LINE CHART)
 // ================================
-async function loadTopProducts() {
-  const res = await fetch(`${API_BASE}/analytics/top-products`);
+async function loadSalesTrend() {
+  const res = await fetch(`${API_BASE}/analytics/trend`);
   const data = await res.json();
 
-  const list = document.getElementById("top-products");
-  list.innerHTML = "";
+  const labels = data.map(d => d.date);
+  const values = data.map(d => d.revenue);
 
-  data.forEach(p => {
-    const li = document.createElement("li");
-    li.textContent = `${p.product} — ${p.quantity_sold} sold`;
-    list.appendChild(li);
+  new Chart(document.getElementById("salesTrendChart"), {
+    type: "line",
+    data: {
+      labels,
+      datasets: [{
+        label: "Revenue (₹)",
+        data: values,
+        borderColor: "blue",
+        fill: false
+      }]
+    }
   });
 }
 
 // ================================
-// LOAD PAYMENT MODES
+// PAYMENT MODE (PIE CHART)
 // ================================
 async function loadPayments() {
   const res = await fetch(`${API_BASE}/analytics/payments`);
   const data = await res.json();
 
-  const list = document.getElementById("payments");
-  list.innerHTML = "";
-
-  data.forEach(p => {
-    const li = document.createElement("li");
-    li.textContent = `${p.payment_mode}: ${p.count}`;
-    list.appendChild(li);
+  new Chart(document.getElementById("paymentChart"), {
+    type: "pie",
+    data: {
+      labels: data.map(p => p.payment_mode),
+      datasets: [{
+        data: data.map(p => p.count),
+        backgroundColor: ["green", "orange", "purple", "red"]
+      }]
+    }
   });
 }
 
 // ================================
-// LOAD SALES TREND
+// TOP PRODUCTS (BAR CHART)
 // ================================
-async function loadTrend() {
-  const res = await fetch(`${API_BASE}/analytics/trend`);
+async function loadTopProducts() {
+  const res = await fetch(`${API_BASE}/analytics/top-products`);
   const data = await res.json();
 
-  const list = document.getElementById("trend");
-  list.innerHTML = "";
-
-  data.forEach(t => {
-    const li = document.createElement("li");
-    li.textContent = `${t.date}: ₹${t.revenue}`;
-    list.appendChild(li);
+  new Chart(document.getElementById("topProductsChart"), {
+    type: "bar",
+    data: {
+      labels: data.map(p => p.product),
+      datasets: [{
+        label: "Units Sold",
+        data: data.map(p => p.quantity_sold),
+        backgroundColor: "teal"
+      }]
+    }
   });
 }
 
@@ -70,7 +79,7 @@ async function loadTrend() {
 // ================================
 window.onload = () => {
   loadSummary();
-  loadTopProducts();
+  loadSalesTrend();
   loadPayments();
-  loadTrend();
+  loadTopProducts();
 };
