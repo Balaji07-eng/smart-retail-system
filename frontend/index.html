@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Smart Retail POS</title>
+    <style>
+        body {
+            font-family: Arial;
+            background: #f4f6f8;
+            padding: 20px;
+        }
+        h1 {
+            text-align: center;
+        }
+        .box {
+            background: white;
+            padding: 20px;
+            margin: auto;
+            width: 400px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px #ccc;
+        }
+        input, select, button {
+            width: 100%;
+            padding: 8px;
+            margin: 6px 0;
+        }
+        button {
+            background: #2b7cff;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #1a5fd0;
+        }
+        .result {
+            margin-top: 15px;
+            background: #e9ffe9;
+            padding: 10px;
+        }
+    </style>
+</head>
+
+<body>
+
+<h1>🧾 Smart Retail POS Billing</h1>
+
+<div class="box">
+
+    <h3>Customer Details</h3>
+    <input id="name" placeholder="Customer Name">
+    <input id="phone" placeholder="Phone Number">
+
+    <h3>Product</h3>
+    <input id="product_id" placeholder="Product ID">
+    <input id="quantity" type="number" placeholder="Quantity">
+
+    <h3>Payment Mode</h3>
+    <select id="payment">
+        <option>Cash</option>
+        <option>UPI</option>
+        <option>Card</option>
+    </select>
+
+    <button onclick="generateBill()">Generate Bill</button>
+
+    <div class="result" id="result"></div>
+
+</div>
+
+<script>
+function generateBill() {
+
+    const data = {
+        customer: {
+            name: document.getElementById("name").value,
+            phone: document.getElementById("phone").value
+        },
+        items: [
+            {
+                product_id: Number(document.getElementById("product_id").value),
+                quantity: Number(document.getElementById("quantity").value)
+            }
+        ],
+        payment: document.getElementById("payment").value
+    };
+
+    fetch("http://127.0.0.1:5000/bill", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data)
+    })
+    .then(res => res.json())
+    .then(res => {
+        document.getElementById("result").innerHTML =
+            "<b>Bill Generated</b><br>" +
+            "Sale ID: " + res.sale_id + "<br>" +
+            "Total: ₹" + res.total;
+    })
+    .catch(err => {
+        document.getElementById("result").innerHTML = "Error generating bill";
+    });
+}
+</script>
+
+</body>
+</html>
