@@ -4,42 +4,45 @@ const API_BASE = "https://smart-retail-system-sz0s.onrender.com";
 // LOAD PRODUCTS
 // ================================
 async function loadProducts() {
-  const res = await fetch(`${API_BASE}/products`);
-  const data = await res.json();
+  try {
+    const res = await fetch(`${API_BASE}/products`);
+    const data = await res.json();
 
-  const tbody = document.getElementById("products");
-  tbody.innerHTML = "";
+    const tbody = document.getElementById("products");
+    tbody.innerHTML = "";
 
-  data.forEach(p => {
-    const row = document.createElement("tr");
+    data.forEach(p => {
+      const row = document.createElement("tr");
 
-    row.innerHTML = `
-      <td>${p.id}</td>
-      <td>${p.name}</td>
-      <td>₹${p.price}</td>
-      <td>${p.stock}</td>
-      <td>
-        <button class="danger" onclick="deleteProduct(${p.id})">
-          Delete
-        </button>
-      </td>
-    `;
+      row.innerHTML = `
+        <td>${p.id}</td>
+        <td>${p.name}</td>
+        <td>₹${p.price}</td>
+        <td>${p.stock}</td>
+        <td>
+          <button class="danger" onclick="deleteProduct(${p.id})">
+            Delete
+          </button>
+        </td>
+      `;
 
-    tbody.appendChild(row);
-  });
+      tbody.appendChild(row);
+    });
+  } catch (err) {
+    alert("Cannot connect to backend");
+  }
 }
-
 
 // ================================
 // ADD PRODUCT
 // ================================
 async function addProduct() {
-  const name = document.getElementById("name").value;
-  const price = document.getElementById("price").value;
-  const stock = document.getElementById("stock").value;
+  const name = document.getElementById("name").value.trim();
+  const price = Number(document.getElementById("price").value);
+  const stock = Number(document.getElementById("stock").value);
 
-  if (!name || !price || !stock) {
-    alert("Fill all fields");
+  if (!name || price <= 0 || stock < 0) {
+    alert("Enter valid product details");
     return;
   }
 
@@ -49,26 +52,33 @@ async function addProduct() {
     body: JSON.stringify({ name, price, stock })
   });
 
-  alert("Product added");
+  alert("Product added successfully");
   loadProducts();
+
+  document.getElementById("name").value = "";
+  document.getElementById("price").value = "";
+  document.getElementById("stock").value = "";
 }
 
 // ================================
-// UPDATE STOCK
+// UPDATE STOCK (✅ FIXED)
 // ================================
 async function increaseStock() {
-  const productId = document.getElementById("productId").value;
-  const quantity = document.getElementById("addStock").value;
+  const productId = Number(document.getElementById("productId").value);
+  const quantity = Number(document.getElementById("addStock").value);
 
-  if (!productId || !quantity || quantity <= 0) {
+  if (!productId || quantity <= 0) {
     alert("Enter valid Product ID and Quantity");
     return;
   }
 
-  const res = await fetch(`${API_BASE}/products/${productId}/stock`, {
+  const res = await fetch(`${API_BASE}/products/stock`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ quantity: Number(quantity) })
+    body: JSON.stringify({
+      product_id: productId,
+      quantity: quantity
+    })
   });
 
   const data = await res.json();
@@ -79,7 +89,7 @@ async function increaseStock() {
     document.getElementById("productId").value = "";
     document.getElementById("addStock").value = "";
   } else {
-    alert(data.error || "Failed to update stock");
+    alert(data.error || "Stock update failed");
   }
 }
 
@@ -87,16 +97,19 @@ async function increaseStock() {
 // DELETE PRODUCT
 // ================================
 async function deleteProduct(id) {
-  if (!confirm("Delete this product?")) return;
+  if (!confirm("Are you sure you want to delete this product?")) return;
 
-  await fetch(`${API_BASE}/products/${id}`, {
+  const res = await fetch(`${API_BASE}/products/${id}`, {
     method: "DELETE"
   });
 
-  alert("Product deleted");
-  loadProducts();
+  if (res.ok) {
+    alert("Product deleted");
+    loadProducts();
+  } else {
+    alert("Delete failed");
+  }
 }
-
 
 // ================================
 // INIT
