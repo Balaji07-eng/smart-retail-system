@@ -1,16 +1,16 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import sqlite3
-from datetime import datetime
+from datetime import datetime, timedelta
 
 app = Flask(__name__)
 CORS(app)
 
 DB = "database.db"
 
-# -------------------------------
+# ===============================
 # DATABASE
-# -------------------------------
+# ===============================
 def connect_db():
     return sqlite3.connect(DB, check_same_thread=False)
 
@@ -28,10 +28,20 @@ def create_tables():
     """)
 
     c.execute("""
+    CREATE TABLE IF NOT EXISTS customers (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT,
+        phone TEXT
+    )
+    """)
+
+    c.execute("""
     CREATE TABLE IF NOT EXISTS sales (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
+        customer_id INTEGER,
         total REAL,
-        created_at TEXT
+        payment_mode TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
     """)
 
@@ -40,7 +50,8 @@ def create_tables():
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         sale_id INTEGER,
         product_id INTEGER,
-        quantity INTEGER
+        quantity INTEGER,
+        subtotal REAL
     )
     """)
 
@@ -49,16 +60,16 @@ def create_tables():
 
 create_tables()
 
-# -------------------------------
-# HEALTH CHECK (IMPORTANT)
-# -------------------------------
-@app.route("/", methods=["GET"])
-def health():
-    return {"status": "API running"}, 200
+# ===============================
+# HEALTH CHECK
+# ===============================
+@app.route("/")
+def home():
+    return {"status": "Backend running"}
 
-# -------------------------------
+# ===============================
 # PRODUCTS
-# -------------------------------
+# ===============================
 @app.route("/products", methods=["GET"])
 def get_products():
     conn = connect_db()
@@ -94,49 +105,57 @@ def delete_product(pid):
     conn.close()
     return {"message": "Product deleted"}
 
-@app.route("/products/stock", methods=["PUT"])
-def update_stock():
+@app.route("/products/<int:pid>/stock", methods=["PUT"])
+def update_stock(pid):
     data = request.json
     conn = connect_db()
     c = conn.cursor()
     c.execute(
         "UPDATE products SET stock = stock + ? WHERE id = ?",
-        (data["quantity"], data["product_id"])
+        (data["quantity"], pid)
     )
     conn.commit()
     conn.close()
     return {"message": "Stock updated"}
 
-# -------------------------------
+# ===============================
 # BILLING
-# -------------------------------
+# ===============================
 @app.route("/bill", methods=["POST"])
-def bill():
+def create_bill():
     data = request.json
     conn = connect_db()
     c = conn.cursor()
+
+    c.execute(
+        "INSERT INTO customers (name, phone) VALUES (?, ?)",
+        (data["customer"]["name"], data["customer"]["phone"])
+    )
+    customer_id = c.lastrowid
 
     total = 0
     for item in data["items"]:
         c.execute("SELECT price, stock FROM products WHERE id = ?", (item["product_id"],))
         price, stock = c.fetchone()
-
         if stock < item["quantity"]:
             return {"error": "Insufficient stock"}, 400
-
         total += price * item["quantity"]
 
     c.execute(
-        "INSERT INTO sales (total, created_at) VALUES (?, ?)",
-        (total, datetime.now().strftime("%Y-%m-%d"))
+        "INSERT INTO sales (customer_id, total, payment_mode) VALUES (?, ?, ?)",
+        (customer_id, total, data["payment"])
     )
     sale_id = c.lastrowid
 
     for item in data["items"]:
-        c.execute(
-            "INSERT INTO sale_items (sale_id, product_id, quantity) VALUES (?, ?, ?)",
-            (sale_id, item["product_id"], item["quantity"])
-        )
+        c.execute("SELECT price FROM products WHERE id = ?", (item["product_id"],))
+        price = c.fetchone()[0]
+
+        c.execute("""
+        INSERT INTO sale_items (sale_id, product_id, quantity, subtotal)
+        VALUES (?, ?, ?, ?)
+        """, (sale_id, item["product_id"], item["quantity"], price * item["quantity"]))
+
         c.execute(
             "UPDATE products SET stock = stock - ? WHERE id = ?",
             (item["quantity"], item["product_id"])
@@ -146,149 +165,109 @@ def bill():
     conn.close()
     return {"sale_id": sale_id, "total": total}
 
-# -------------------------------
-# ANALYTICS
-# -------------------------------
+# ===============================
+# ANALYTICS SUMMARY
+# ===============================
 @app.route("/analytics/summary")
-def summary():
+def analytics_summary():
     conn = connect_db()
     c = conn.cursor()
 
     c.execute("SELECT COUNT(*), SUM(total) FROM sales")
-    count, revenue = c.fetchone()
+    sales, revenue = c.fetchone()
+
+    # simple profit assumption: 30%
+    profit = (revenue or 0) * 0.3
 
     conn.close()
     return {
-        "total_sales": count or 0,
-        "total_revenue": revenue or 0
+        "total_sales": sales or 0,
+        "total_revenue": revenue or 0,
+        "total_profit": round(profit, 2)
     }
 
-@app.route("/analytics/trend")
-def trend():
+# ===============================
+# SALES TRENDS
+# ===============================
+def trend_query(group_by):
     conn = connect_db()
     c = conn.cursor()
-
-    c.execute("""
-        SELECT created_at, SUM(total)
-        FROM sales
-        GROUP BY created_at
-        ORDER BY created_at
+    c.execute(f"""
+    SELECT {group_by}, SUM(total)
+    FROM sales
+    GROUP BY {group_by}
+    ORDER BY {group_by}
     """)
-
     rows = c.fetchall()
     conn.close()
+    return rows
 
-    return jsonify([
-        {"date": r[0], "revenue": r[1]}
-        for r in rows
-    ])
-# -------------------------------
-# ANALYTICS – WEEKLY
-# -------------------------------
 @app.route("/analytics/weekly")
-def weekly_sales():
-    conn = connect_db()
-    c = conn.cursor()
+def weekly():
+    rows = trend_query("strftime('%Y-%W', created_at)")
+    return jsonify([{"period": r[0], "revenue": r[1]} for r in rows])
 
-    c.execute("""
-        SELECT strftime('%W', created_at) AS week, SUM(total)
-        FROM sales
-        GROUP BY week
-        ORDER BY week
-    """)
-
-    rows = c.fetchall()
-    conn.close()
-
-    return jsonify([
-        {"period": f"Week {r[0]}", "revenue": r[1]}
-        for r in rows
-    ])
-
-
-# -------------------------------
-# ANALYTICS – MONTHLY
-# -------------------------------
 @app.route("/analytics/monthly")
-def monthly_sales():
-    conn = connect_db()
-    c = conn.cursor()
+def monthly():
+    rows = trend_query("strftime('%Y-%m', created_at)")
+    return jsonify([{"period": r[0], "revenue": r[1]} for r in rows])
 
-    c.execute("""
-        SELECT strftime('%Y-%m', created_at), SUM(total)
-        FROM sales
-        GROUP BY strftime('%Y-%m', created_at)
-        ORDER BY strftime('%Y-%m', created_at)
-    """)
-
-    rows = c.fetchall()
-    conn.close()
-
-    return jsonify([
-        {"period": r[0], "revenue": r[1]}
-        for r in rows
-    ])
-
-
-# -------------------------------
-# ANALYTICS – YEARLY
-# -------------------------------
 @app.route("/analytics/yearly")
-def yearly_sales():
+def yearly():
+    rows = trend_query("strftime('%Y', created_at)")
+    return jsonify([{"period": r[0], "revenue": r[1]} for r in rows])
+
+# ===============================
+# LOW STOCK
+# ===============================
+@app.route("/analytics/low-stock")
+def low_stock():
     conn = connect_db()
     c = conn.cursor()
-
-    c.execute("""
-        SELECT strftime('%Y', created_at), SUM(total)
-        FROM sales
-        GROUP BY strftime('%Y', created_at)
-        ORDER BY strftime('%Y', created_at)
-    """)
-
+    c.execute("SELECT id, name, stock FROM products WHERE stock <= 5")
     rows = c.fetchall()
     conn.close()
 
     return jsonify([
-        {"period": r[0], "revenue": r[1]}
+        {"id": r[0], "name": r[1], "stock": r[2]}
         for r in rows
     ])
-# -------------------------------
-# STOCK PREDICTION
-# -------------------------------
+
+# ===============================
+# STOCK PREDICTION (NEXT 7 DAYS)
+# ===============================
 @app.route("/analytics/stock-prediction")
 def stock_prediction():
     conn = connect_db()
     c = conn.cursor()
 
     c.execute("""
-        SELECT p.id, p.name,
-               IFNULL(SUM(si.quantity), 0) / 30.0 AS avg_daily_sales,
-               p.stock
-        FROM products p
-        LEFT JOIN sale_items si ON p.id = si.product_id
-        LEFT JOIN sales s ON si.sale_id = s.id
-        AND s.created_at >= date('now', '-30 day')
-        GROUP BY p.id
+    SELECT p.id, p.name, p.stock,
+           IFNULL(SUM(si.quantity) / 7.0, 0) as avg_daily
+    FROM products p
+    LEFT JOIN sale_items si ON p.id = si.product_id
+    LEFT JOIN sales s ON si.sale_id = s.id
+    WHERE s.created_at >= date('now', '-7 day')
+    GROUP BY p.id
     """)
-
     rows = c.fetchall()
     conn.close()
 
     result = []
     for r in rows:
-        recommended = int(r[2] * 7)  # next 7 days
+        recommended = int(r[3] * 7)
         result.append({
             "product_id": r[0],
             "name": r[1],
-            "avg_daily_sales": round(r[2], 2),
-            "current_stock": r[3],
+            "avg_daily_sales": round(r[3], 2),
+            "current_stock": r[2],
             "recommended_stock": recommended
         })
 
     return jsonify(result)
 
-# -------------------------------
-# RUN (Render compatible)
-# -------------------------------
+# ===============================
+# RUN (RENDER)
+# ===============================
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=10000)
