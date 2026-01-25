@@ -1,113 +1,79 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>Smart Retail Analytics Dashboard</title>
+const API_BASE = "https://smart-retail-system-sz0s.onrender.com";
 
-  <!-- Bootstrap -->
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+// SUMMARY
+async function loadSummary() {
+  const res = await fetch(`${API_BASE}/analytics/summary`);
+  const data = await res.json();
 
-  <!-- Chart.js -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-</head>
+  document.getElementById("totalRevenue").innerText = "₹" + data.total_revenue;
+  document.getElementById("totalProfit").innerText = "₹" + data.total_profit;
+  document.getElementById("totalSales").innerText = data.total_sales;
+}
 
-<body class="bg-light">
+// CHARTS
+async function loadChart(endpoint, elementId, label) {
+  const res = await fetch(`${API_BASE}/analytics/${endpoint}`);
+  const data = await res.json();
 
-<nav class="navbar navbar-dark bg-dark px-4">
-  <span class="navbar-brand mb-0 h1">📊 Smart Retail Dashboard</span>
-</nav>
+  new Chart(document.getElementById(elementId), {
+    type: "line",
+    data: {
+      labels: data.map(d => Object.values(d)[0]),
+      datasets: [{
+        label: label,
+        data: data.map(d => Object.values(d)[1]),
+        borderWidth: 2,
+        fill: false
+      }]
+    }
+  });
+}
 
-<div class="container mt-4">
+// LOW STOCK
+async function loadLowStock() {
+  const res = await fetch(`${API_BASE}/analytics/low-stock`);
+  const data = await res.json();
 
-  <!-- SUMMARY CARDS -->
-  <div class="row g-3 mb-4">
-    <div class="col-md-4">
-      <div class="card shadow">
-        <div class="card-body text-center">
-          <h6>Total Revenue</h6>
-          <h2 id="totalRevenue">₹0</h2>
-        </div>
-      </div>
-    </div>
+  const table = document.getElementById("lowStockTable");
+  table.innerHTML = "";
 
-    <div class="col-md-4">
-      <div class="card shadow">
-        <div class="card-body text-center">
-          <h6>Total Profit</h6>
-          <h2 id="totalProfit">₹0</h2>
-        </div>
-      </div>
-    </div>
+  data.forEach(p => {
+    table.innerHTML += `
+      <tr class="table-danger">
+        <td>${p.id}</td>
+        <td>${p.name}</td>
+        <td>${p.stock}</td>
+      </tr>
+    `;
+  });
+}
 
-    <div class="col-md-4">
-      <div class="card shadow">
-        <div class="card-body text-center">
-          <h6>Total Sales</h6>
-          <h2 id="totalSales">0</h2>
-        </div>
-      </div>
-    </div>
-  </div>
+// STOCK PREDICTION
+async function loadPrediction() {
+  const res = await fetch(`${API_BASE}/analytics/stock-prediction`);
+  const data = await res.json();
 
-  <!-- GRAPHS -->
-  <div class="card shadow mb-4">
-    <div class="card-body">
-      <h5 class="mb-3">Weekly Sales Trend</h5>
-      <canvas id="weeklyChart"></canvas>
-    </div>
-  </div>
+  const table = document.getElementById("predictionTable");
+  table.innerHTML = "";
 
-  <div class="card shadow mb-4">
-    <div class="card-body">
-      <h5 class="mb-3">Monthly Sales Trend</h5>
-      <canvas id="monthlyChart"></canvas>
-    </div>
-  </div>
+  data.forEach(p => {
+    table.innerHTML += `
+      <tr>
+        <td>${p.product_id}</td>
+        <td>${p.name}</td>
+        <td>${p.avg_daily_sales}</td>
+        <td><b>${p.recommended_stock}</b></td>
+      </tr>
+    `;
+  });
+}
 
-  <div class="card shadow mb-4">
-    <div class="card-body">
-      <h5 class="mb-3">Yearly Sales Trend</h5>
-      <canvas id="yearlyChart"></canvas>
-    </div>
-  </div>
-
-  <!-- LOW STOCK -->
-  <div class="card shadow mb-4">
-    <div class="card-body">
-      <h5 class="mb-3 text-danger">⚠ Low Stock Alerts</h5>
-      <table class="table table-striped">
-        <thead class="table-dark">
-          <tr>
-            <th>ID</th>
-            <th>Product</th>
-            <th>Stock</th>
-          </tr>
-        </thead>
-        <tbody id="lowStockTable"></tbody>
-      </table>
-    </div>
-  </div>
-
-  <!-- STOCK PREDICTION -->
-  <div class="card shadow mb-5">
-    <div class="card-body">
-      <h5 class="mb-3">📦 Stock Prediction (Next 7 Days)</h5>
-      <table class="table table-bordered">
-        <thead class="table-secondary">
-          <tr>
-            <th>ID</th>
-            <th>Product</th>
-            <th>Avg Daily Sales</th>
-            <th>Recommended Stock</th>
-          </tr>
-        </thead>
-        <tbody id="predictionTable"></tbody>
-      </table>
-    </div>
-  </div>
-
-</div>
-
-<script src="dashboard.js"></script>
-</body>
-</html>
+// INIT
+window.onload = () => {
+  loadSummary();
+  loadChart("weekly", "weeklyChart", "Weekly Revenue");
+  loadChart("monthly", "monthlyChart", "Monthly Revenue");
+  loadChart("yearly", "yearlyChart", "Yearly Revenue");
+  loadLowStock();
+  loadPrediction();
+};
