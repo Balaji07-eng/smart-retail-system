@@ -93,6 +93,54 @@ async function loadStockPrediction() {
     table.appendChild(row);
   });
 }
+async function loadWeeklyChart() {
+  const res = await fetch(`${API_BASE}/analytics/weekly`);
+  const data = await res.json();
+
+  new Chart(document.getElementById("weeklyChart"), {
+    type: "line",
+    data: {
+      labels: data.map(d => d.week),
+      datasets: [{
+        label: "Weekly Revenue",
+        data: data.map(d => d.revenue),
+        borderWidth: 2
+      }]
+    }
+  });
+}
+async function loadMonthlyChart() {
+  const res = await fetch(`${API_BASE}/analytics/monthly`);
+  const data = await res.json();
+
+  new Chart(document.getElementById("monthlyChart"), {
+    type: "bar",
+    data: {
+      labels: data.map(d => d.month),
+      datasets: [{
+        label: "Monthly Revenue",
+        data: data.map(d => d.revenue),
+        borderWidth: 2
+      }]
+    }
+  });
+}
+async function loadYearlyChart() {
+  const res = await fetch(`${API_BASE}/analytics/yearly`);
+  const data = await res.json();
+
+  new Chart(document.getElementById("yearlyChart"), {
+    type: "bar",
+    data: {
+      labels: data.map(d => d.year),
+      datasets: [{
+        label: "Yearly Revenue",
+        data: data.map(d => d.revenue),
+        borderWidth: 2
+      }]
+    }
+  });
+}
 
 // ================================
 // INIT
