@@ -110,13 +110,16 @@ def update_stock(pid):
     data = request.json
     conn = connect_db()
     c = conn.cursor()
+
     c.execute(
         "UPDATE products SET stock = stock + ? WHERE id = ?",
         (data["quantity"], pid)
     )
+
     conn.commit()
     conn.close()
     return {"message": "Stock updated"}
+
 
 # ===============================
 # BILLING
