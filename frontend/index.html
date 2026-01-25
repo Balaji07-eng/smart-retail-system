@@ -5,100 +5,154 @@
     <style>
         body {
             font-family: Arial;
-            background: #f4f6f8;
+            background: #f2f4f7;
             padding: 20px;
         }
         h1 {
             text-align: center;
         }
-        .box {
+        .container {
+            max-width: 800px;
             background: white;
-            padding: 20px;
             margin: auto;
-            width: 400px;
+            padding: 20px;
             border-radius: 8px;
-            box-shadow: 0 0 10px #ccc;
         }
         input, select, button {
-            width: 100%;
             padding: 8px;
-            margin: 6px 0;
+            margin: 5px;
         }
         button {
-            background: #2b7cff;
+            background: #2563eb;
             color: white;
             border: none;
             cursor: pointer;
         }
         button:hover {
-            background: #1a5fd0;
+            background: #1e40af;
         }
-        .result {
+        table {
+            width: 100%;
             margin-top: 15px;
-            background: #e9ffe9;
-            padding: 10px;
+            border-collapse: collapse;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: center;
+        }
+        th {
+            background: #f3f4f6;
+        }
+        .total {
+            text-align: right;
+            font-size: 18px;
+            margin-top: 10px;
         }
     </style>
 </head>
 
 <body>
 
-<h1>🧾 Smart Retail POS Billing</h1>
+<h1>🧾 Smart Retail POS System</h1>
 
-<div class="box">
+<div class="container">
 
     <h3>Customer Details</h3>
-    <input id="name" placeholder="Customer Name">
-    <input id="phone" placeholder="Phone Number">
+    <input id="custName" placeholder="Customer Name">
+    <input id="custPhone" placeholder="Phone">
 
-    <h3>Product</h3>
-    <input id="product_id" placeholder="Product ID">
-    <input id="quantity" type="number" placeholder="Quantity">
+    <h3>Add Product</h3>
+    <select id="productSelect"></select>
+    <input type="number" id="qty" placeholder="Quantity" min="1">
+    <button onclick="addToCart()">Add to Cart</button>
 
-    <h3>Payment Mode</h3>
+    <table>
+        <thead>
+            <tr>
+                <th>Product</th>
+                <th>Qty</th>
+                <th>Price</th>
+                <th>Subtotal</th>
+            </tr>
+        </thead>
+        <tbody id="cart"></tbody>
+    </table>
+
+    <div class="total">
+        <b>Total: ₹<span id="total">0</span></b>
+    </div>
+
+    <h3>Payment</h3>
     <select id="payment">
         <option>Cash</option>
         <option>UPI</option>
         <option>Card</option>
     </select>
 
+    <br><br>
     <button onclick="generateBill()">Generate Bill</button>
 
-    <div class="result" id="result"></div>
-
+    <p id="result"></p>
 </div>
 
 <script>
+let products = [];
+let cart = [];
+let total = 0;
+
+fetch("http://127.0.0.1:5000/products")
+    .then(res => res.json())
+    .then(data => {
+        products = data;
+        const select = document.getElementById("productSelect");
+        data.forEach(p => {
+            const opt = document.createElement("option");
+            opt.value = p.id;
+            opt.text = p.name + " (₹" + p.price + ")";
+            select.add(opt);
+        });
+    });
+
+function addToCart() {
+    const pid = Number(document.getElementById("productSelect").value);
+    const qty = Number(document.getElementById("qty").value);
+    const product = products.find(p => p.id === pid);
+
+    const subtotal = product.price * qty;
+    total += subtotal;
+
+    cart.push({ product_id: pid, quantity: qty });
+
+    document.getElementById("cart").innerHTML += `
+        <tr>
+            <td>${product.name}</td>
+            <td>${qty}</td>
+            <td>${product.price}</td>
+            <td>${subtotal}</td>
+        </tr>
+    `;
+
+    document.getElementById("total").innerText = total;
+}
+
 function generateBill() {
-
-    const data = {
-        customer: {
-            name: document.getElementById("name").value,
-            phone: document.getElementById("phone").value
-        },
-        items: [
-            {
-                product_id: Number(document.getElementById("product_id").value),
-                quantity: Number(document.getElementById("quantity").value)
-            }
-        ],
-        payment: document.getElementById("payment").value
-    };
-
     fetch("http://127.0.0.1:5000/bill", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data)
+        body: JSON.stringify({
+            customer: {
+                name: document.getElementById("custName").value,
+                phone: document.getElementById("custPhone").value
+            },
+            items: cart,
+            payment: document.getElementById("payment").value
+        })
     })
     .then(res => res.json())
     .then(res => {
         document.getElementById("result").innerHTML =
-            "<b>Bill Generated</b><br>" +
-            "Sale ID: " + res.sale_id + "<br>" +
-            "Total: ₹" + res.total;
-    })
-    .catch(err => {
-        document.getElementById("result").innerHTML = "Error generating bill";
+            "✅ Bill Generated | Sale ID: " + res.sale_id + " | Total: ₹" + res.total;
     });
 }
 </script>
