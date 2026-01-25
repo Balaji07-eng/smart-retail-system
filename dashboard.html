@@ -107,7 +107,14 @@
   </div>
 
 </div>
+<script>
+  if (localStorage.getItem("role") !== "admin") {
+    alert("Access denied");
+    window.location.href = "login.html";
+  }
+</script>
 
 <script src="dashboard.js"></script>
+  
 </body>
 </html>
