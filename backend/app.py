@@ -438,6 +438,63 @@ def stock_prediction():
         })
 
     return predictions
+@app.route("/analytics/weekly", methods=["GET"])
+def weekly_sales():
+    conn = connect_db()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT strftime('%Y-%W', created_at) as week, SUM(total)
+        FROM sales
+        GROUP BY week
+        ORDER BY week
+    """)
+
+    rows = cursor.fetchall()
+    conn.close()
+
+    return jsonify([
+        {"week": r[0], "revenue": r[1]}
+        for r in rows
+    ])
+@app.route("/analytics/monthly", methods=["GET"])
+def monthly_sales():
+    conn = connect_db()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT strftime('%Y-%m', created_at) as month, SUM(total)
+        FROM sales
+        GROUP BY month
+        ORDER BY month
+    """)
+
+    rows = cursor.fetchall()
+    conn.close()
+
+    return jsonify([
+        {"month": r[0], "revenue": r[1]}
+        for r in rows
+    ])
+@app.route("/analytics/yearly", methods=["GET"])
+def yearly_sales():
+    conn = connect_db()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT strftime('%Y', created_at) as year, SUM(total)
+        FROM sales
+        GROUP BY year
+        ORDER BY year
+    """)
+
+    rows = cursor.fetchall()
+    conn.close()
+
+    return jsonify([
+        {"year": r[0], "revenue": r[1]}
+        for r in rows
+    ])
 
 # -------------------------------
 # RUN SERVER
