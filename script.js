@@ -2,10 +2,8 @@
 // CONFIG
 // ================================
 
-// 🔴 CHANGE THIS when backend is deployed online (Render)
+// ✅ Render backend URL (KEEP THIS)
 const API_BASE = "https://smart-retail-system-sz0s.onrender.com";
-// Example later:
-// const API_BASE = "https://your-app-name.onrender.com";
 
 let products = [];
 let cart = [];
@@ -36,8 +34,9 @@ async function loadProducts() {
       list.appendChild(row);
     });
 
-  } catch (err) {
-    alert("Backend not running!");
+  } catch (error) {
+    alert("❌ Cannot connect to backend");
+    console.error(error);
   }
 }
 
@@ -45,17 +44,24 @@ async function loadProducts() {
 // ADD TO CART
 // ================================
 function addToCart(productId) {
-  const qty = parseInt(document.getElementById(`qty-${productId}`).value);
-  const product = products.find(p => p.id === productId);
+  const qtyInput = document.getElementById(`qty-${productId}`);
+  const qty = parseInt(qtyInput.value);
 
+  const product = products.find(p => p.id === productId);
   if (!product || qty <= 0) return;
 
-  cart.push({
-    product_id: productId,
-    name: product.name,
-    quantity: qty,
-    price: product.price
-  });
+  // If product already in cart → increase quantity
+  const existing = cart.find(i => i.product_id === productId);
+  if (existing) {
+    existing.quantity += qty;
+  } else {
+    cart.push({
+      product_id: productId,
+      name: product.name,
+      price: product.price,
+      quantity: qty
+    });
+  }
 
   renderCart();
 }
@@ -70,10 +76,11 @@ function renderCart() {
   let total = 0;
 
   cart.forEach(item => {
-    total += item.price * item.quantity;
+    const subtotal = item.price * item.quantity;
+    total += subtotal;
 
     const li = document.createElement("li");
-    li.textContent = `${item.name} x ${item.quantity} = ₹${item.price * item.quantity}`;
+    li.textContent = `${item.name} × ${item.quantity} = ₹${subtotal}`;
     cartList.appendChild(li);
   });
 
@@ -84,18 +91,18 @@ function renderCart() {
 // CREATE BILL
 // ================================
 async function createBill() {
-  const name = document.getElementById("customer-name").value;
-  const phone = document.getElementById("customer-phone").value;
+  const name = document.getElementById("customer-name").value.trim();
+  const phone = document.getElementById("customer-phone").value.trim();
   const payment = document.getElementById("payment-mode").value;
 
   if (!name || !phone || cart.length === 0) {
-    alert("Fill all fields and add items");
+    alert("⚠️ Enter customer details and add items");
     return;
   }
 
   const payload = {
     customer: { name, phone },
-    payment: payment,
+    payment,
     items: cart.map(item => ({
       product_id: item.product_id,
       quantity: item.quantity
@@ -111,20 +118,25 @@ async function createBill() {
 
     const data = await res.json();
 
-    if (res.ok) {
-      alert(
-        `Bill Generated!\nSale ID: ${data.sale_id}\nTotal: ₹${data.total}`
-      );
-
-      cart = [];
-      renderCart();
-      loadProducts();
-    } else {
-      alert(data.error || "Billing failed");
+    if (!res.ok) {
+      alert(data.error || "❌ Billing failed");
+      return;
     }
 
-  } catch (err) {
-    alert("Server error");
+    alert(
+      `✅ Bill Generated!\n\nSale ID: ${data.sale_id}\nTotal: ₹${data.total}`
+    );
+
+    cart = [];
+    renderCart();
+    loadProducts();
+
+    document.getElementById("customer-name").value = "";
+    document.getElementById("customer-phone").value = "";
+
+  } catch (error) {
+    alert("❌ Server error");
+    console.error(error);
   }
 }
 
