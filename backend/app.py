@@ -1,3 +1,7 @@
+import os
+print("RUNNING FILE:", __file__)
+print("WORKING DIRECTORY:", os.getcwd())
+
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from models import create_tables, connect_db
