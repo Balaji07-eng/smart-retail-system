@@ -1,18 +1,34 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Smart Retail Dashboard</title>
+  <meta charset="UTF-8">
+  <title>Smart Retail Analytics Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <!-- Chart.js (LOAD ONCE, IN HEAD) -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
   <style>
-    body { font-family: Arial; background: #f4f6f8; margin: 0; }
-    header { background: #1f2933; color: white; padding: 15px; font-size: 22px; }
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f6f8;
+      margin: 0;
+    }
 
-    .container { padding: 25px; }
+    header {
+      background: #1f2933;
+      color: white;
+      padding: 15px;
+      font-size: 22px;
+    }
+
+    .container {
+      padding: 25px;
+    }
 
     .cards {
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
       gap: 20px;
     }
 
@@ -36,6 +52,12 @@
       padding: 8px 15px;
       margin-right: 10px;
       cursor: pointer;
+      border: 1px solid #ccc;
+      background: #f9fafb;
+    }
+
+    button:hover {
+      background: #e5e7eb;
     }
 
     table {
@@ -48,49 +70,55 @@
       border-bottom: 1px solid #ddd;
       text-align: center;
     }
+
+    th {
+      background: #f1f5f9;
+    }
   </style>
 </head>
 
 <body>
+
 <header>📊 Smart Retail Analytics Dashboard</header>
 
 <div class="container">
 
-  <!-- SUMMARY -->
+  <!-- SUMMARY CARDS -->
   <div class="cards">
     <div class="card">
       <h3>Total Revenue</h3>
       <p id="totalRevenue">₹0</p>
     </div>
+
     <div class="card">
       <h3>Total Sales</h3>
       <p id="totalSales">0</p>
     </div>
+
     <div class="card">
       <h3>Status</h3>
-      <p>Live</p>
+      <p style="color: green; font-weight: bold;">Live</p>
     </div>
   </div>
 
-  <!-- TREND -->
-<div class="chart-box">
-  <h3>Sales Trend</h3>
+  <!-- SALES TREND -->
+  <div class="chart-box">
+    <h3>📈 Sales Trend</h3>
 
-  <button onclick="loadTrend('weekly')">Weekly</button>
-  <button onclick="loadTrend('monthly')">Monthly</button>
-  <button onclick="loadTrend('yearly')">Yearly</button>
+    <button onclick="loadTrend('weekly')">Weekly</button>
+    <button onclick="loadTrend('monthly')">Monthly</button>
+    <button onclick="loadTrend('yearly')">Yearly</button>
 
-  <!-- IMPORTANT: set height -->
-  <canvas id="trendChart" height="120"></canvas>
-</div>
+    <br><br>
 
-<!-- Load Chart.js FIRST -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="dashboard.js"></script>
+    <!-- Canvas must exist BEFORE JS runs -->
+    <canvas id="trendChart" height="120"></canvas>
+  </div>
 
   <!-- STOCK PREDICTION -->
   <div class="table-box">
     <h3>📦 Stock Prediction (Next 7 Days)</h3>
+
     <table>
       <thead>
         <tr>
@@ -101,12 +129,16 @@
           <th>Recommended Stock</th>
         </tr>
       </thead>
-      <tbody id="predictionTable"></tbody>
+      <tbody id="predictionTable">
+        <!-- Loaded dynamically -->
+      </tbody>
     </table>
   </div>
 
 </div>
 
-<script src="dashboard.js"></script>
+<!-- LOAD DASHBOARD LOGIC LAST -->
+<script src="./dashboard.js"></script>
+
 </body>
 </html>
