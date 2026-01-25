@@ -1,38 +1,27 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import sqlite3
+from datetime import datetime, timedelta
 
 app = Flask(__name__)
 CORS(app)
 
-# -------------------------------
-# DATABASE CONNECTION
-# -------------------------------
-def connect_db():
-    return sqlite3.connect(
-        "database.db",
-        timeout=10,
-        check_same_thread=False
-    )
+DB_NAME = "database.db"
 
-# -------------------------------
-# CREATE ALL TABLES (ONE PLACE)
-# -------------------------------
+# ================================
+# DATABASE CONNECTION
+# ================================
+def connect_db():
+    return sqlite3.connect(DB_NAME, check_same_thread=False)
+
+# ================================
+# CREATE TABLES
+# ================================
 def create_tables():
     conn = connect_db()
-    cursor = conn.cursor()
+    cur = conn.cursor()
 
-    # Customers
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS customers (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT,
-        phone TEXT
-    )
-    """)
-
-    # Products
-    cursor.execute("""
+    cur.execute("""
     CREATE TABLE IF NOT EXISTS products (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT,
@@ -41,8 +30,15 @@ def create_tables():
     )
     """)
 
-    # Sales
-    cursor.execute("""
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS customers (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT,
+        phone TEXT
+    )
+    """)
+
+    cur.execute("""
     CREATE TABLE IF NOT EXISTS sales (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         customer_id INTEGER,
@@ -52,8 +48,7 @@ def create_tables():
     )
     """)
 
-    # Sale items
-    cursor.execute("""
+    cur.execute("""
     CREATE TABLE IF NOT EXISTS sale_items (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         sale_id INTEGER,
@@ -66,25 +61,24 @@ def create_tables():
     conn.commit()
     conn.close()
 
-# Create tables on startup
 create_tables()
 
-# -------------------------------
-# BASIC ROUTE
-# -------------------------------
+# ================================
+# BASIC
+# ================================
 @app.route("/")
 def home():
-    return {"status": "Backend running"}
+    return {"status": "Smart Retail Backend Running"}
 
-# -------------------------------
+# ================================
 # PRODUCTS
-# -------------------------------
+# ================================
 @app.route("/products", methods=["GET"])
 def get_products():
     conn = connect_db()
-    cursor = conn.cursor()
-    cursor.execute("SELECT * FROM products")
-    rows = cursor.fetchall()
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM products")
+    rows = cur.fetchall()
     conn.close()
 
     return jsonify([
@@ -95,410 +89,190 @@ def get_products():
 @app.route("/products", methods=["POST"])
 def add_product():
     data = request.get_json()
-
     conn = connect_db()
-    cursor = conn.cursor()
-    cursor.execute(
+    cur = conn.cursor()
+
+    cur.execute(
         "INSERT INTO products (name, price, stock) VALUES (?, ?, ?)",
         (data["name"], data["price"], data["stock"])
     )
+
     conn.commit()
     conn.close()
+    return {"message": "Product added successfully"}
 
-    return jsonify({"message": "Product added successfully"})
+@app.route("/products/<int:pid>", methods=["DELETE"])
+def delete_product(pid):
+    conn = connect_db()
+    cur = conn.cursor()
+    cur.execute("DELETE FROM products WHERE id=?", (pid,))
+    conn.commit()
+    conn.close()
+    return {"message": "Product deleted"}
 
-# -------------------------------
-# POS BILLING
-# -------------------------------
+# ================================
+# BILLING (POS)
+# ================================
 @app.route("/bill", methods=["POST"])
 def create_bill():
     data = request.get_json()
     items = data["items"]
-    payment_mode = data["payment"]
     customer = data["customer"]
+    payment = data["payment"]
 
     conn = connect_db()
-    cursor = conn.cursor()
+    cur = conn.cursor()
 
-    # Insert customer
-    cursor.execute(
-        "INSERT INTO customers (name, phone) VALUES (?, ?)",
+    cur.execute(
+        "INSERT INTO customers (name, phone) VALUES (?,?)",
         (customer["name"], customer["phone"])
     )
-    customer_id = cursor.lastrowid
+    customer_id = cur.lastrowid
 
     total = 0
-
-    # Calculate total
     for item in items:
-        cursor.execute(
-            "SELECT price, stock FROM products WHERE id = ?",
-            (item["product_id"],)
-        )
-        price, stock = cursor.fetchone()
+        cur.execute("SELECT price, stock FROM products WHERE id=?", (item["product_id"],))
+        price, stock = cur.fetchone()
 
         if stock < item["quantity"]:
-            conn.close()
             return {"error": "Insufficient stock"}, 400
 
         total += price * item["quantity"]
 
-    # Insert sale
-    cursor.execute(
-        "INSERT INTO sales (customer_id, total, payment_mode) VALUES (?, ?, ?)",
-        (customer_id, total, payment_mode)
+    cur.execute(
+        "INSERT INTO sales (customer_id, total, payment_mode) VALUES (?,?,?)",
+        (customer_id, total, payment)
     )
-    sale_id = cursor.lastrowid
+    sale_id = cur.lastrowid
 
-    # Sale items + stock update
     for item in items:
-        cursor.execute(
-            "SELECT price FROM products WHERE id = ?",
-            (item["product_id"],)
-        )
-        price = cursor.fetchone()[0]
+        cur.execute("SELECT price FROM products WHERE id=?", (item["product_id"],))
+        price = cur.fetchone()[0]
 
-        subtotal = price * item["quantity"]
-
-        cursor.execute(
-            "INSERT INTO sale_items (sale_id, product_id, quantity, subtotal) VALUES (?, ?, ?, ?)",
-            (sale_id, item["product_id"], item["quantity"], subtotal)
+        cur.execute(
+            "INSERT INTO sale_items (sale_id, product_id, quantity, subtotal) VALUES (?,?,?,?)",
+            (sale_id, item["product_id"], item["quantity"], price * item["quantity"])
         )
 
-        cursor.execute(
-            "UPDATE products SET stock = stock - ? WHERE id = ?",
+        cur.execute(
+            "UPDATE products SET stock = stock - ? WHERE id=?",
             (item["quantity"], item["product_id"])
         )
 
     conn.commit()
     conn.close()
 
-    return jsonify({
+    return {
         "message": "Bill generated successfully",
         "sale_id": sale_id,
         "customer_id": customer_id,
         "total": total
-    })
+    }
 
-# -------------------------------
-# SALES HISTORY
-# -------------------------------
-@app.route("/sales", methods=["GET"])
-def get_sales():
-    conn = connect_db()
-    cursor = conn.cursor()
-
-    cursor.execute("""
-        SELECT id, total, payment_mode, created_at
-        FROM sales
-        ORDER BY created_at DESC
-    """)
-    rows = cursor.fetchall()
-    conn.close()
-
-    return jsonify([
-        {
-            "sale_id": r[0],
-            "total": r[1],
-            "payment_mode": r[2],
-            "date": r[3]
-        }
-        for r in rows
-    ])
-
-@app.route("/sales/<int:sale_id>", methods=["GET"])
-def get_sale_details(sale_id):
-    conn = connect_db()
-    cursor = conn.cursor()
-
-    cursor.execute("""
-        SELECT p.name, si.quantity, si.subtotal
-        FROM sale_items si
-        JOIN products p ON si.product_id = p.id
-        WHERE si.sale_id = ?
-    """, (sale_id,))
-
-    rows = cursor.fetchall()
-    conn.close()
-
-    return jsonify([
-        {"product": r[0], "quantity": r[1], "subtotal": r[2]}
-        for r in rows
-    ])
-
-# -------------------------------
-# ANALYTICS
-# -------------------------------
-@app.route("/analytics/summary", methods=["GET"])
+# ================================
+# ANALYTICS SUMMARY
+# ================================
+@app.route("/analytics/summary")
 def analytics_summary():
     conn = connect_db()
-    cursor = conn.cursor()
+    cur = conn.cursor()
 
-    cursor.execute("SELECT SUM(total) FROM sales")
-    total_revenue = cursor.fetchone()[0] or 0
+    cur.execute("SELECT SUM(total) FROM sales")
+    revenue = cur.fetchone()[0] or 0
 
-    cursor.execute("SELECT COUNT(*) FROM sales")
-    total_sales = cursor.fetchone()[0]
+    cur.execute("SELECT COUNT(*) FROM sales")
+    total_sales = cur.fetchone()[0]
 
     conn.close()
 
-    return jsonify({
-        "total_revenue": total_revenue,
+    return {
+        "total_revenue": revenue,
         "total_sales": total_sales
-    })
+    }
 
-@app.route("/analytics/top-products", methods=["GET"])
-def top_products():
-    conn = connect_db()
-    cursor = conn.cursor()
-
-    cursor.execute("""
-        SELECT p.name, SUM(si.quantity)
-        FROM sale_items si
-        JOIN products p ON si.product_id = p.id
-        GROUP BY p.name
-        ORDER BY SUM(si.quantity) DESC
-    """)
-
-    rows = cursor.fetchall()
-    conn.close()
-
-    return jsonify([
-        {"product": r[0], "quantity_sold": r[1]}
-        for r in rows
-    ])
-
-@app.route("/analytics/payments", methods=["GET"])
-def payment_breakdown():
-    conn = connect_db()
-    cursor = conn.cursor()
-
-    cursor.execute("""
-        SELECT payment_mode, COUNT(*)
-        FROM sales
-        GROUP BY payment_mode
-    """)
-
-    rows = cursor.fetchall()
-    conn.close()
-
-    return jsonify([
-        {"payment_mode": r[0], "count": r[1]}
-        for r in rows
-    ])
-
-@app.route("/analytics/trend", methods=["GET"])
-def sales_trend():
-    conn = connect_db()
-    cursor = conn.cursor()
-
-    cursor.execute("""
-        SELECT DATE(created_at), SUM(total)
-        FROM sales
-        GROUP BY DATE(created_at)
-        ORDER BY DATE(created_at)
-    """)
-
-    rows = cursor.fetchall()
-    conn.close()
-
-    return jsonify([
-        {"date": r[0], "revenue": r[1]}
-        for r in rows
-    ])
-
-# -------------------------------
-# CUSTOMERS
-# -------------------------------
-@app.route("/customers", methods=["GET"])
-def get_customers():
-    conn = connect_db()
-    cursor = conn.cursor()
-
-    cursor.execute("SELECT id, name, phone FROM customers")
-    rows = cursor.fetchall()
-    conn.close()
-
-    return jsonify([
-        {"id": r[0], "name": r[1], "phone": r[2]}
-        for r in rows
-    ])
-
-@app.route("/customers/<int:customer_id>/history", methods=["GET"])
-def customer_history(customer_id):
-    conn = connect_db()
-    cursor = conn.cursor()
-
-    cursor.execute("""
-        SELECT id, total, payment_mode, created_at
-        FROM sales
-        WHERE customer_id = ?
-    """, (customer_id,))
-
-    rows = cursor.fetchall()
-    conn.close()
-
-    return jsonify([
-        {
-            "sale_id": r[0],
-            "total": r[1],
-            "payment_mode": r[2],
-            "date": r[3]
-        }
-        for r in rows
-    ])
-@app.route("/products/<int:product_id>/stock", methods=["PATCH"])
-def update_stock(product_id):
-    data = request.get_json()
-    quantity = data.get("quantity")
-
-    if quantity is None or quantity <= 0:
-        return {"error": "Invalid quantity"}, 400
-
-    conn = connect_db()
-    cursor = conn.cursor()
-
-    cursor.execute(
-        "UPDATE products SET stock = stock + ? WHERE id = ?",
-        (quantity, product_id)
-    )
-
-    conn.commit()
-    conn.close()
-
-    return {"message": "Stock updated successfully"}
-
-@app.route("/products/<int:product_id>", methods=["DELETE"])
-def delete_product(product_id):
-    conn = connect_db()
-    cursor = conn.cursor()
-
-    cursor.execute("DELETE FROM products WHERE id = ?", (product_id,))
-    conn.commit()
-    conn.close()
-
-    return {"message": "Product deleted successfully"}
-
-@app.route("/products/<int:product_id>/stock", methods=["PUT"])
-def increase_stock(product_id):
-    data = request.get_json()
-    qty = data.get("quantity")
-
-    if not qty or qty <= 0:
-        return {"error": "Invalid quantity"}, 400
-
-    conn = connect_db()
-    cursor = conn.cursor()
-
-    cursor.execute(
-        "UPDATE products SET stock = stock + ? WHERE id = ?",
-        (qty, product_id)
-    )
-
-    if cursor.rowcount == 0:
-        conn.close()
-        return {"error": "Product not found"}, 404
-
-    conn.commit()
-    conn.close()
-
-    return {"message": "Stock updated successfully"}
-@app.route("/analytics/stock-prediction", methods=["GET"])
-def stock_prediction():
-    conn = connect_db()
-    cursor = conn.cursor()
-
-    cursor.execute("""
-        SELECT 
-            p.id,
-            p.name,
-            IFNULL(SUM(si.quantity), 0) as total_sold
-        FROM products p
-        LEFT JOIN sale_items si ON p.id = si.product_id
-        LEFT JOIN sales s ON si.sale_id = s.id
-        AND s.created_at >= DATE('now', '-30 day')
-        GROUP BY p.id
-    """)
-
-    rows = cursor.fetchall()
-    conn.close()
-
-    predictions = []
-
-    for r in rows:
-        avg_daily = r[2] / 30
-        next_7_days = avg_daily * 7
-        safety_stock = next_7_days * 0.2
-
-        predictions.append({
-            "product_id": r[0],
-            "name": r[1],
-            "avg_daily_sales": round(avg_daily, 2),
-            "recommended_stock": int(next_7_days + safety_stock)
-        })
-
-    return predictions
-@app.route("/analytics/weekly", methods=["GET"])
+# ================================
+# WEEKLY / MONTHLY / YEARLY
+# ================================
+@app.route("/analytics/weekly")
 def weekly_sales():
     conn = connect_db()
-    cursor = conn.cursor()
+    cur = conn.cursor()
 
-    cursor.execute("""
-        SELECT strftime('%Y-%W', created_at) as week, SUM(total)
-        FROM sales
-        GROUP BY week
-        ORDER BY week
+    cur.execute("""
+    SELECT strftime('%W', created_at) AS week, SUM(total)
+    FROM sales
+    GROUP BY week
+    ORDER BY week
     """)
 
-    rows = cursor.fetchall()
+    data = [{"week": r[0], "revenue": r[1]} for r in cur.fetchall()]
     conn.close()
+    return jsonify(data)
 
-    return jsonify([
-        {"week": r[0], "revenue": r[1]}
-        for r in rows
-    ])
-@app.route("/analytics/monthly", methods=["GET"])
+@app.route("/analytics/monthly")
 def monthly_sales():
     conn = connect_db()
-    cursor = conn.cursor()
+    cur = conn.cursor()
 
-    cursor.execute("""
-        SELECT strftime('%Y-%m', created_at) as month, SUM(total)
-        FROM sales
-        GROUP BY month
-        ORDER BY month
+    cur.execute("""
+    SELECT strftime('%Y-%m', created_at) AS month, SUM(total)
+    FROM sales
+    GROUP BY month
+    ORDER BY month
     """)
 
-    rows = cursor.fetchall()
+    data = [{"month": r[0], "revenue": r[1]} for r in cur.fetchall()]
     conn.close()
+    return jsonify(data)
 
-    return jsonify([
-        {"month": r[0], "revenue": r[1]}
-        for r in rows
-    ])
-@app.route("/analytics/yearly", methods=["GET"])
+@app.route("/analytics/yearly")
 def yearly_sales():
     conn = connect_db()
-    cursor = conn.cursor()
+    cur = conn.cursor()
 
-    cursor.execute("""
-        SELECT strftime('%Y', created_at) as year, SUM(total)
-        FROM sales
-        GROUP BY year
-        ORDER BY year
+    cur.execute("""
+    SELECT strftime('%Y', created_at) AS year, SUM(total)
+    FROM sales
+    GROUP BY year
+    ORDER BY year
     """)
 
-    rows = cursor.fetchall()
+    data = [{"year": r[0], "revenue": r[1]} for r in cur.fetchall()]
     conn.close()
+    return jsonify(data)
 
-    return jsonify([
-        {"year": r[0], "revenue": r[1]}
-        for r in rows
-    ])
+# ================================
+# STOCK PREDICTION (7 DAYS)
+# ================================
+@app.route("/analytics/stock-prediction")
+def stock_prediction():
+    conn = connect_db()
+    cur = conn.cursor()
 
-# -------------------------------
-# RUN SERVER
-# -------------------------------
+    cur.execute("""
+    SELECT p.id, p.name, IFNULL(SUM(si.quantity),0)
+    FROM products p
+    LEFT JOIN sale_items si ON p.id = si.product_id
+    GROUP BY p.id
+    """)
+
+    results = []
+    for pid, name, total_sold in cur.fetchall():
+        avg_daily = round(total_sold / 7, 2) if total_sold else 0
+        recommended = int(avg_daily * 7)
+
+        results.append({
+            "product_id": pid,
+            "name": name,
+            "avg_daily_sales": avg_daily,
+            "recommended_stock": recommended
+        })
+
+    conn.close()
+    return jsonify(results)
+
+# ================================
+# RUN
+# ================================
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=10000)
-
+    app.run(debug=True)
