@@ -403,6 +403,35 @@ def increase_stock(product_id):
     conn.close()
 
     return {"message": "Stock updated successfully"}
+@app.route("/predict/<int:product_id>", methods=["GET"])
+def predict_stock(product_id):
+    days = int(request.args.get("days", 7))
+
+    conn = connect_db()
+    cursor = conn.cursor()
+
+    # total sold in last 30 days
+    cursor.execute("""
+        SELECT SUM(si.quantity)
+        FROM sale_items si
+        JOIN sales s ON si.sale_id = s.id
+        WHERE si.product_id = ?
+        AND s.created_at >= DATE('now', '-30 day')
+    """, (product_id,))
+
+    total_sold = cursor.fetchone()[0] or 0
+    conn.close()
+
+    avg_daily = total_sold / 30
+    predicted = avg_daily * days
+    safety_stock = predicted * 0.2
+
+    return {
+        "product_id": product_id,
+        "avg_daily_sales": round(avg_daily, 2),
+        "days": days,
+        "recommended_stock": int(predicted + safety_stock)
+    }
 
 # -------------------------------
 # RUN SERVER
