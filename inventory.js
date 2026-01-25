@@ -7,16 +7,21 @@ async function loadProducts() {
   const res = await fetch(`${API_BASE}/products`);
   const data = await res.json();
 
-  const list = document.getElementById("products");
-  list.innerHTML = "";
+  const table = document.getElementById("products");
+  table.innerHTML = "";
 
   data.forEach(p => {
-    const li = document.createElement("li");
-    li.innerHTML = `
-      ID: ${p.id} | ${p.name} | ₹${p.price} | Stock: ${p.stock}
-      <button onclick="deleteProduct(${p.id})">Delete</button>
+    const row = document.createElement("tr");
+    row.innerHTML = `
+      <td>${p.id}</td>
+      <td>${p.name}</td>
+      <td>${p.price}</td>
+      <td>${p.stock}</td>
+      <td>
+        <button class="danger" onclick="deleteProduct(${p.id})">Delete</button>
+      </td>
     `;
-    list.appendChild(li);
+    table.appendChild(row);
   });
 }
 
@@ -44,14 +49,14 @@ async function addProduct() {
 }
 
 // ================================
-// INCREASE STOCK
+// UPDATE STOCK
 // ================================
 async function increaseStock() {
   const id = document.getElementById("productId").value;
   const qty = document.getElementById("addStock").value;
 
   if (!id || !qty) {
-    alert("Enter product ID and quantity");
+    alert("Enter ID and quantity");
     return;
   }
 
@@ -69,7 +74,7 @@ async function increaseStock() {
 // DELETE PRODUCT
 // ================================
 async function deleteProduct(id) {
-  if (!confirm("Are you sure you want to delete this product?")) return;
+  if (!confirm("Delete this product?")) return;
 
   await fetch(`${API_BASE}/products/${id}`, {
     method: "DELETE"
