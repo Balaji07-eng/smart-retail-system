@@ -379,6 +379,30 @@ def delete_product(product_id):
 
     return {"message": "Product deleted successfully"}
 
+@app.route("/products/<int:product_id>/stock", methods=["PUT"])
+def increase_stock(product_id):
+    data = request.get_json()
+    qty = data.get("quantity")
+
+    if not qty or qty <= 0:
+        return {"error": "Invalid quantity"}, 400
+
+    conn = connect_db()
+    cursor = conn.cursor()
+
+    cursor.execute(
+        "UPDATE products SET stock = stock + ? WHERE id = ?",
+        (qty, product_id)
+    )
+
+    if cursor.rowcount == 0:
+        conn.close()
+        return {"error": "Product not found"}, 404
+
+    conn.commit()
+    conn.close()
+
+    return {"message": "Stock updated successfully"}
 
 # -------------------------------
 # RUN SERVER
