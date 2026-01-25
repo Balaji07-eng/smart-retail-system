@@ -182,6 +182,110 @@ def trend():
         {"date": r[0], "revenue": r[1]}
         for r in rows
     ])
+# -------------------------------
+# ANALYTICS – WEEKLY
+# -------------------------------
+@app.route("/analytics/weekly")
+def weekly_sales():
+    conn = connect_db()
+    c = conn.cursor()
+
+    c.execute("""
+        SELECT strftime('%W', created_at) AS week, SUM(total)
+        FROM sales
+        GROUP BY week
+        ORDER BY week
+    """)
+
+    rows = c.fetchall()
+    conn.close()
+
+    return jsonify([
+        {"period": f"Week {r[0]}", "revenue": r[1]}
+        for r in rows
+    ])
+
+
+# -------------------------------
+# ANALYTICS – MONTHLY
+# -------------------------------
+@app.route("/analytics/monthly")
+def monthly_sales():
+    conn = connect_db()
+    c = conn.cursor()
+
+    c.execute("""
+        SELECT strftime('%Y-%m', created_at), SUM(total)
+        FROM sales
+        GROUP BY strftime('%Y-%m', created_at)
+        ORDER BY strftime('%Y-%m', created_at)
+    """)
+
+    rows = c.fetchall()
+    conn.close()
+
+    return jsonify([
+        {"period": r[0], "revenue": r[1]}
+        for r in rows
+    ])
+
+
+# -------------------------------
+# ANALYTICS – YEARLY
+# -------------------------------
+@app.route("/analytics/yearly")
+def yearly_sales():
+    conn = connect_db()
+    c = conn.cursor()
+
+    c.execute("""
+        SELECT strftime('%Y', created_at), SUM(total)
+        FROM sales
+        GROUP BY strftime('%Y', created_at)
+        ORDER BY strftime('%Y', created_at)
+    """)
+
+    rows = c.fetchall()
+    conn.close()
+
+    return jsonify([
+        {"period": r[0], "revenue": r[1]}
+        for r in rows
+    ])
+# -------------------------------
+# STOCK PREDICTION
+# -------------------------------
+@app.route("/analytics/stock-prediction")
+def stock_prediction():
+    conn = connect_db()
+    c = conn.cursor()
+
+    c.execute("""
+        SELECT p.id, p.name,
+               IFNULL(SUM(si.quantity), 0) / 30.0 AS avg_daily_sales,
+               p.stock
+        FROM products p
+        LEFT JOIN sale_items si ON p.id = si.product_id
+        LEFT JOIN sales s ON si.sale_id = s.id
+        AND s.created_at >= date('now', '-30 day')
+        GROUP BY p.id
+    """)
+
+    rows = c.fetchall()
+    conn.close()
+
+    result = []
+    for r in rows:
+        recommended = int(r[2] * 7)  # next 7 days
+        result.append({
+            "product_id": r[0],
+            "name": r[1],
+            "avg_daily_sales": round(r[2], 2),
+            "current_stock": r[3],
+            "recommended_stock": recommended
+        })
+
+    return jsonify(result)
 
 # -------------------------------
 # RUN (Render compatible)
