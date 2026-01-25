@@ -403,35 +403,41 @@ def increase_stock(product_id):
     conn.close()
 
     return {"message": "Stock updated successfully"}
-@app.route("/predict/<int:product_id>", methods=["GET"])
-def predict_stock(product_id):
-    days = int(request.args.get("days", 7))
-
+@app.route("/analytics/stock-prediction", methods=["GET"])
+def stock_prediction():
     conn = connect_db()
     cursor = conn.cursor()
 
-    # total sold in last 30 days
     cursor.execute("""
-        SELECT SUM(si.quantity)
-        FROM sale_items si
-        JOIN sales s ON si.sale_id = s.id
-        WHERE si.product_id = ?
+        SELECT 
+            p.id,
+            p.name,
+            IFNULL(SUM(si.quantity), 0) as total_sold
+        FROM products p
+        LEFT JOIN sale_items si ON p.id = si.product_id
+        LEFT JOIN sales s ON si.sale_id = s.id
         AND s.created_at >= DATE('now', '-30 day')
-    """, (product_id,))
+        GROUP BY p.id
+    """)
 
-    total_sold = cursor.fetchone()[0] or 0
+    rows = cursor.fetchall()
     conn.close()
 
-    avg_daily = total_sold / 30
-    predicted = avg_daily * days
-    safety_stock = predicted * 0.2
+    predictions = []
 
-    return {
-        "product_id": product_id,
-        "avg_daily_sales": round(avg_daily, 2),
-        "days": days,
-        "recommended_stock": int(predicted + safety_stock)
-    }
+    for r in rows:
+        avg_daily = r[2] / 30
+        next_7_days = avg_daily * 7
+        safety_stock = next_7_days * 0.2
+
+        predictions.append({
+            "product_id": r[0],
+            "name": r[1],
+            "avg_daily_sales": round(avg_daily, 2),
+            "recommended_stock": int(next_7_days + safety_stock)
+        })
+
+    return predictions
 
 # -------------------------------
 # RUN SERVER
