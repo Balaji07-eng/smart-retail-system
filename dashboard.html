@@ -1,18 +1,54 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+  <meta charset="UTF-8">
   <title>Analytics Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <!-- Chart.js (must be BEFORE dashboard.js) -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f6f8;
+      padding: 20px;
+    }
+
+    h2 {
+      color: #2c3e50;
+    }
+
+    .stats {
+      background: white;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.05);
+    }
+
+    canvas {
+      background: white;
+      padding: 15px;
+      border-radius: 8px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.05);
+    }
+  </style>
 </head>
 
-<body style="font-family:Arial;padding:20px;">
-<h2>📊 Sales Analytics</h2>
+<body>
 
-<p>Total Revenue: ₹<span id="revenue">0</span></p>
-<p>Total Sales: <span id="sales">0</span></p>
+<h2>📊 Sales Analytics Dashboard</h2>
 
-<canvas id="chart" height="100"></canvas>
+<div class="stats">
+  <p><b>Total Revenue:</b> ₹<span id="revenue">0</span></p>
+  <p><b>Total Sales:</b> <span id="sales">0</span></p>
+</div>
 
+<!-- IMPORTANT: give canvas a size -->
+<canvas id="chart" height="120"></canvas>
+
+<!-- Load dashboard logic LAST -->
 <script src="dashboard.js"></script>
 </body>
 </html>
