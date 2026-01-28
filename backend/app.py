@@ -268,6 +268,24 @@ def stock_prediction():
         })
 
     return jsonify(result)
+@app.route("/analytics/low-stock")
+def low_stock():
+    conn = connect_db()
+    c = conn.cursor()
+
+    c.execute("""
+        SELECT id, name, stock
+        FROM products
+        WHERE stock <= 5
+    """)
+
+    rows = c.fetchall()
+    conn.close()
+
+    return jsonify([
+        {"id": r[0], "name": r[1], "stock": r[2]}
+        for r in rows
+    ])
 
 # ===============================
 # RUN (RENDER)
