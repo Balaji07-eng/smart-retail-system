@@ -317,6 +317,20 @@ def stock_prediction():
         })
 
     return jsonify(result)
+@app.route("/products/restock", methods=["POST"])
+def auto_restock():
+    data = request.json
+    conn = connect_db()
+    c = conn.cursor()
+
+    c.execute(
+        "UPDATE products SET stock = stock + ? WHERE id = ?",
+        (data["quantity"], data["product_id"])
+    )
+
+    conn.commit()
+    conn.close()
+    return {"message": "Auto restock completed"}
 
 # ===============================
 # RUN (RENDER)
