@@ -286,6 +286,37 @@ def low_stock():
         {"id": r[0], "name": r[1], "stock": r[2]}
         for r in rows
     ])
+@app.route("/analytics/stock-prediction")
+def stock_prediction():
+    conn = connect_db()
+    c = conn.cursor()
+
+    c.execute("""
+        SELECT p.id, p.name,
+               IFNULL(SUM(si.quantity) / 7.0, 0) AS avg_daily_sales,
+               p.stock
+        FROM products p
+        LEFT JOIN sale_items si ON p.id = si.product_id
+        LEFT JOIN sales s ON s.id = si.sale_id
+        AND s.created_at >= date('now','-7 day')
+        GROUP BY p.id
+    """)
+
+    rows = c.fetchall()
+    conn.close()
+
+    result = []
+    for r in rows:
+        recommended = int(r[2] * 7) + 5
+        result.append({
+            "product_id": r[0],
+            "name": r[1],
+            "avg_daily_sales": round(r[2], 2),
+            "current_stock": r[3],
+            "recommended_stock": recommended
+        })
+
+    return jsonify(result)
 
 # ===============================
 # RUN (RENDER)
