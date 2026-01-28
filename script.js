@@ -77,6 +77,12 @@ function renderCart() {
     li.textContent = `${item.name} x ${item.quantity} = ₹${item.price * item.quantity}`;
     cartList.appendChild(li);
   });
+if (p.stock <= 5) {
+  row.style.backgroundColor = "#ffe6e6";
+  row.innerHTML += `<td style="color:red;font-weight:bold">LOW ⚠️</td>`;
+} else {
+  row.innerHTML += `<td>OK</td>`;
+}
 
   document.getElementById("total").textContent = total;
 }
