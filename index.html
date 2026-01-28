@@ -2,90 +2,23 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Smart Retail POS System</title>
+  <title>Smart Retail POS</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
 
+  <!-- PDF Invoice -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #f4f6f8;
-      padding: 20px;
-      margin: 0;
-    }
-
-    h1 {
-      text-align: center;
-      color: #2c3e50;
-      margin-bottom: 25px;
-    }
-
-    section {
-      background: #fff;
-      padding: 15px;
-      margin-bottom: 20px;
-      border-radius: 8px;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.08);
-    }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 10px;
-    }
-
-    th, td {
-      border: 1px solid #ddd;
-      padding: 8px;
-      text-align: center;
-    }
-
-    th {
-      background: #3498db;
-      color: white;
-    }
-
-    input, select {
-      padding: 6px;
-      width: 100%;
-      margin: 4px 0;
-      box-sizing: border-box;
-    }
-
-    button {
-      padding: 6px 14px;
-      background: #2ecc71;
-      border: none;
-      color: white;
-      cursor: pointer;
-      border-radius: 4px;
-      font-weight: bold;
-    }
-
-    button:hover {
-      background: #27ae60;
-    }
-
-    ul {
-      list-style: none;
-      padding-left: 0;
-    }
-
-    ul li {
-      padding: 6px 0;
-      border-bottom: 1px solid #eee;
-    }
-
-    .total {
-      font-size: 18px;
-      font-weight: bold;
-      margin-top: 10px;
-      text-align: right;
-    }
-
-    .empty {
-      color: #888;
-      font-style: italic;
-    }
+    body { font-family: Arial; background:#f4f6f8; padding:20px; }
+    h1 { text-align:center; }
+    section { background:#fff; padding:15px; margin-bottom:20px; border-radius:8px; }
+    table { width:100%; border-collapse:collapse; }
+    th, td { border:1px solid #ddd; padding:8px; text-align:center; }
+    th { background:#3498db; color:white; }
+    input, select { width:100%; padding:6px; margin:4px 0; }
+    button { background:#2ecc71; color:white; border:none; padding:8px 12px; cursor:pointer; }
+    button:hover { background:#27ae60; }
+    .total { font-size:18px; font-weight:bold; }
   </style>
 </head>
 
@@ -93,59 +26,37 @@
 
 <h1>🛒 Smart Retail POS System</h1>
 
-<!-- PRODUCTS -->
 <section>
   <h2>Products</h2>
   <table>
     <thead>
       <tr>
-        <th>ID</th>
-        <th>Name</th>
-        <th>Price (₹)</th>
-        <th>Stock</th>
-        <th>Qty</th>
-        <th>Action</th>
+        <th>ID</th><th>Name</th><th>Price</th><th>Stock</th><th>Qty</th><th>Action</th>
       </tr>
     </thead>
-    <tbody id="product-list">
-      <!-- Loaded dynamically -->
-    </tbody>
+    <tbody id="product-list"></tbody>
   </table>
 </section>
 
-<!-- CART -->
 <section>
   <h2>Cart</h2>
-  <ul id="cart">
-    <li class="empty">No items added</li>
-  </ul>
-  <div class="total">
-    Total: ₹<span id="total">0</span>
-  </div>
+  <ul id="cart"></ul>
+  <div class="total">Total: ₹<span id="total">0</span></div>
 </section>
 
-<!-- CUSTOMER -->
 <section>
-  <h2>Customer Details</h2>
-
-  <label for="customer-name">Name</label>
-  <input type="text" id="customer-name" placeholder="Customer Name">
-
-  <label for="customer-phone">Phone</label>
-  <input type="text" id="customer-phone" placeholder="Phone Number">
-
-  <label for="payment-mode">Payment Mode</label>
+  <h2>Customer</h2>
+  <input id="customer-name" placeholder="Customer Name">
+  <input id="customer-phone" placeholder="Phone">
   <select id="payment-mode">
     <option value="CASH">Cash</option>
     <option value="UPI">UPI</option>
     <option value="CARD">Card</option>
   </select>
-
   <br><br>
   <button onclick="createBill()">Generate Bill</button>
 </section>
 
-<!-- IMPORTANT: correct path for GitHub Pages -->
 <script src="script.js"></script>
 </body>
 </html>
