@@ -1,149 +1,77 @@
-// ================================
-// CONFIG
-// ================================
 const API_BASE = "https://smart-retail-system-sz0s.onrender.com";
 
 let products = [];
 let cart = [];
 
-// ================================
-// LOAD PRODUCTS
-// ================================
 async function loadProducts() {
-  try {
-    const res = await fetch(`${API_BASE}/products`);
-    products = await res.json();
+  const res = await fetch(`${API_BASE}/products`);
+  products = await res.json();
 
-    const list = document.getElementById("product-list");
-    list.innerHTML = "";
+  const list = document.getElementById("product-list");
+  list.innerHTML = "";
 
-    products.forEach(p => {
-      const row = document.createElement("tr");
+  products.forEach(p => {
+    const row = document.createElement("tr");
+    if (p.stock <= 5) row.style.background = "#ffe6e6";
 
-      // LOW STOCK highlight
-      if (p.stock <= 5) {
-        row.style.backgroundColor = "#ffe6e6";
-      }
-
-      row.innerHTML = `
-        <td>${p.id}</td>
-        <td>${p.name}</td>
-        <td>₹${p.price}</td>
-        <td>
-          ${p.stock}
-          ${p.stock <= 5 ? "<span style='color:red;font-weight:bold'> ⚠ LOW</span>" : ""}
-        </td>
-        <td>
-          <input type="number" min="1" max="${p.stock}" value="1" id="qty-${p.id}">
-        </td>
-        <td>
-          <button onclick="addToCart(${p.id})">Add</button>
-        </td>
-      `;
-
-      list.appendChild(row);
-    });
-
-  } catch (err) {
-    alert("❌ Cannot connect to backend");
-  }
+    row.innerHTML = `
+      <td>${p.id}</td>
+      <td>${p.name}</td>
+      <td>₹${p.price}</td>
+      <td>${p.stock}${p.stock<=5?" ⚠":""}</td>
+      <td><input type="number" id="qty-${p.id}" value="1" min="1" max="${p.stock}"></td>
+      <td><button onclick="addToCart(${p.id})">Add</button></td>
+    `;
+    list.appendChild(row);
+  });
 }
 
-// ================================
-// ADD TO CART
-// ================================
-function addToCart(productId) {
-  const qtyInput = document.getElementById(`qty-${productId}`);
-  const qty = parseInt(qtyInput.value);
-  const product = products.find(p => p.id === productId);
+function addToCart(id) {
+  const qty = Number(document.getElementById(`qty-${id}`).value);
+  const p = products.find(x => x.id === id);
+  if (!p || qty<=0) return;
 
-  if (!product || qty <= 0) return;
-
-  // Check if already in cart
-  const existing = cart.find(i => i.product_id === productId);
-
-  if (existing) {
-    existing.quantity += qty;
-  } else {
-    cart.push({
-      product_id: productId,
-      name: product.name,
-      price: product.price,
-      quantity: qty
-    });
-  }
+  const ex = cart.find(x => x.product_id === id);
+  if (ex) ex.quantity += qty;
+  else cart.push({product_id:id,name:p.name,price:p.price,quantity:qty});
 
   renderCart();
 }
 
-// ================================
-// RENDER CART
-// ================================
 function renderCart() {
-  const cartList = document.getElementById("cart");
-  cartList.innerHTML = "";
-
+  const ul = document.getElementById("cart");
+  ul.innerHTML = "";
   let total = 0;
 
-  cart.forEach(item => {
-    const subtotal = item.price * item.quantity;
-    total += subtotal;
-
-    const li = document.createElement("li");
-    li.textContent = `${item.name} × ${item.quantity} = ₹${subtotal}`;
-    cartList.appendChild(li);
+  cart.forEach(i => {
+    total += i.price*i.quantity;
+    ul.innerHTML += `<li>${i.name} × ${i.quantity}</li>`;
   });
 
-  document.getElementById("total").textContent = total;
+  document.getElementById("total").innerText = total;
 }
 
-// ================================
-// CREATE BILL
-// ================================
 async function createBill() {
-  const name = document.getElementById("customer-name").value.trim();
-  const phone = document.getElementById("customer-phone").value.trim();
-  const payment = document.getElementById("payment-mode").value;
-
-  if (!name || !phone || cart.length === 0) {
-    alert("⚠ Fill customer details and add items");
-    return;
-  }
-
   const payload = {
-    customer: { name, phone },
-    payment: payment,
-    items: cart.map(i => ({
-      product_id: i.product_id,
-      quantity: i.quantity
-    }))
+    customer:{
+      name:document.getElementById("customer-name").value,
+      phone:document.getElementById("customer-phone").value
+    },
+    payment:document.getElementById("payment-mode").value,
+    items:cart.map(i=>({product_id:i.product_id,quantity:i.quantity}))
   };
 
-  try {
-    const res = await fetch(`${API_BASE}/bill`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
-    });
+  const res = await fetch(`${API_BASE}/bill`,{
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify(payload)
+  });
 
-    const data = await res.json();
-
-    if (res.ok) {
-      alert(`✅ Bill Generated\nSale ID: ${data.sale_id}\nTotal: ₹${data.total}`);
-
-      cart = [];
-      renderCart();
-      loadProducts();
-    } else {
-      alert(data.error || "Billing failed");
-    }
-
-  } catch (err) {
-    alert("❌ Server error");
-  }
+  const d = await res.json();
+  alert(`Sale ${d.sale_id} | Total ₹${d.total}`);
+  cart=[];
+  renderCart();
+  loadProducts();
 }
 
-// ================================
-// INIT
-// ================================
 window.onload = loadProducts;
