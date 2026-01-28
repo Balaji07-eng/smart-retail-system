@@ -3,7 +3,6 @@
 // ================================
 const API_BASE = "https://smart-retail-system-sz0s.onrender.com";
 
-// ================================
 let products = [];
 let cart = [];
 
@@ -21,11 +20,19 @@ async function loadProducts() {
     products.forEach(p => {
       const row = document.createElement("tr");
 
+      // LOW STOCK highlight
+      if (p.stock <= 5) {
+        row.style.backgroundColor = "#ffe6e6";
+      }
+
       row.innerHTML = `
         <td>${p.id}</td>
         <td>${p.name}</td>
         <td>₹${p.price}</td>
-        <td>${p.stock}</td>
+        <td>
+          ${p.stock}
+          ${p.stock <= 5 ? "<span style='color:red;font-weight:bold'> ⚠ LOW</span>" : ""}
+        </td>
         <td>
           <input type="number" min="1" max="${p.stock}" value="1" id="qty-${p.id}">
         </td>
@@ -46,17 +53,25 @@ async function loadProducts() {
 // ADD TO CART
 // ================================
 function addToCart(productId) {
-  const qty = parseInt(document.getElementById(`qty-${productId}`).value);
+  const qtyInput = document.getElementById(`qty-${productId}`);
+  const qty = parseInt(qtyInput.value);
   const product = products.find(p => p.id === productId);
 
   if (!product || qty <= 0) return;
 
-  cart.push({
-    product_id: productId,
-    name: product.name,
-    price: product.price,
-    quantity: qty
-  });
+  // Check if already in cart
+  const existing = cart.find(i => i.product_id === productId);
+
+  if (existing) {
+    existing.quantity += qty;
+  } else {
+    cart.push({
+      product_id: productId,
+      name: product.name,
+      price: product.price,
+      quantity: qty
+    });
+  }
 
   renderCart();
 }
@@ -71,18 +86,13 @@ function renderCart() {
   let total = 0;
 
   cart.forEach(item => {
-    total += item.price * item.quantity;
+    const subtotal = item.price * item.quantity;
+    total += subtotal;
 
     const li = document.createElement("li");
-    li.textContent = `${item.name} x ${item.quantity} = ₹${item.price * item.quantity}`;
+    li.textContent = `${item.name} × ${item.quantity} = ₹${subtotal}`;
     cartList.appendChild(li);
   });
-if (p.stock <= 5) {
-  row.style.backgroundColor = "#ffe6e6";
-  row.innerHTML += `<td style="color:red;font-weight:bold">LOW ⚠️</td>`;
-} else {
-  row.innerHTML += `<td>OK</td>`;
-}
 
   document.getElementById("total").textContent = total;
 }
@@ -91,8 +101,8 @@ if (p.stock <= 5) {
 // CREATE BILL
 // ================================
 async function createBill() {
-  const name = document.getElementById("customer-name").value;
-  const phone = document.getElementById("customer-phone").value;
+  const name = document.getElementById("customer-name").value.trim();
+  const phone = document.getElementById("customer-phone").value.trim();
   const payment = document.getElementById("payment-mode").value;
 
   if (!name || !phone || cart.length === 0) {
@@ -120,6 +130,7 @@ async function createBill() {
 
     if (res.ok) {
       alert(`✅ Bill Generated\nSale ID: ${data.sale_id}\nTotal: ₹${data.total}`);
+
       cart = [];
       renderCart();
       loadProducts();
