@@ -83,6 +83,25 @@ async function loadPrediction() {
     `;
   });
 }
+async function loadPrediction() {
+  const res = await fetch(`${API_BASE}/analytics/stock-prediction`);
+  const data = await res.json();
+
+  const table = document.getElementById("predictionTable");
+  table.innerHTML = "";
+
+  data.forEach(p => {
+    table.innerHTML += `
+      <tr>
+        <td>${p.product_id}</td>
+        <td>${p.name}</td>
+        <td>${p.avg_daily_sales}</td>
+        <td>${p.current_stock}</td>
+        <td><b>${p.recommended_stock}</b></td>
+      </tr>
+    `;
+  });
+}
 
 // ===============================
 // INIT
