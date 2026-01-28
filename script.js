@@ -3,77 +3,113 @@ const API = "https://smart-retail-system-sz0s.onrender.com";
 let products = [];
 let cart = [];
 
-// --------------------
+// ================================
 // LOAD PRODUCTS
-// --------------------
+// ================================
 async function loadProducts() {
-  const res = await fetch(`${API}/products`);
-  products = await res.json();
+  try {
+    const res = await fetch(`${API}/products`);
+    products = await res.json();
 
-  const tbody = document.getElementById("product-list");
-  tbody.innerHTML = "";
+    const tbody = document.getElementById("product-list");
+    tbody.innerHTML = "";
 
-  products.forEach(p => {
-    const row = document.createElement("tr");
+    products.forEach(p => {
+      const row = document.createElement("tr");
 
-    row.innerHTML = `
-      <td>${p.id}</td>
-      <td>${p.name}</td>
-      <td>₹${p.price}</td>
-      <td>${p.stock}</td>
-      <td><input type="number" min="1" max="${p.stock}" value="1" id="q-${p.id}"></td>
-      <td><button onclick="addToCart(${p.id})">Add</button></td>
-    `;
+      row.innerHTML = `
+        <td>${p.id}</td>
+        <td>${p.name}</td>
+        <td>₹${p.price}</td>
+        <td>${p.stock}</td>
+        <td>
+          <input type="number"
+                 min="1"
+                 max="${p.stock}"
+                 value="1"
+                 id="q-${p.id}">
+        </td>
+        <td>
+          <button onclick="addToCart(${p.id})">Add</button>
+        </td>
+      `;
 
-    tbody.appendChild(row);
-  });
+      tbody.appendChild(row);
+    });
+
+  } catch (err) {
+    alert("❌ Backend not reachable");
+  }
 }
 
-// --------------------
+// ================================
 // ADD TO CART
-// --------------------
+// ================================
 function addToCart(id) {
-  const qty = Number(document.getElementById(`q-${id}`).value);
-  const p = products.find(x => x.id === id);
+  const qtyInput = document.getElementById(`q-${id}`);
+  const qty = Number(qtyInput.value);
+  const product = products.find(p => p.id === id);
 
-  if (!p || qty <= 0) return;
+  if (!product || qty <= 0) return;
 
-  cart.push({
-    product_id: id,
-    name: p.name,
-    price: p.price,
-    quantity: qty
-  });
+  if (qty > product.stock) {
+    alert("⚠ Quantity exceeds available stock");
+    return;
+  }
+
+  // If product already in cart → update quantity
+  const existing = cart.find(i => i.product_id === id);
+
+  if (existing) {
+    if (existing.quantity + qty > product.stock) {
+      alert("⚠ Stock limit exceeded");
+      return;
+    }
+    existing.quantity += qty;
+  } else {
+    cart.push({
+      product_id: id,
+      name: product.name,
+      price: product.price,
+      quantity: qty
+    });
+  }
 
   renderCart();
 }
 
-// --------------------
+// ================================
 // RENDER CART
-// --------------------
+// ================================
 function renderCart() {
   const ul = document.getElementById("cart");
   ul.innerHTML = "";
+
   let total = 0;
 
-  cart.forEach(i => {
-    total += i.price * i.quantity;
-    ul.innerHTML += `<li>${i.name} × ${i.quantity} = ₹${i.price * i.quantity}</li>`;
+  cart.forEach(item => {
+    total += item.price * item.quantity;
+    ul.innerHTML += `
+      <li>
+        ${item.name} × ${item.quantity}
+        = ₹${item.price * item.quantity}
+      </li>
+    `;
   });
 
   document.getElementById("total").innerText = total;
 }
 
-// --------------------
-// BILL + PDF
-// --------------------
+// ================================
+// CREATE BILL
+// ================================
 async function createBill() {
-  const name = document.getElementById("customer-name").value;
-  const phone = document.getElementById("customer-phone").value;
+  const name = document.getElementById("customer-name").value.trim();
+  const phone = document.getElementById("customer-phone").value.trim();
   const payment = document.getElementById("payment-mode").value;
 
   if (!name || !phone || cart.length === 0) {
-    alert("Fill all details & add items");
+    alert("⚠ Fill customer details and add items");
     return;
   }
 
@@ -86,45 +122,68 @@ async function createBill() {
     }))
   };
 
-  const res = await fetch(`${API}/bill`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload)
-  });
+  try {
+    const res = await fetch(`${API}/bill`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
 
-  const data = await res.json();
+    const data = await res.json();
 
-  generateInvoicePDF(data.sale_id, name, phone, cart, data.total, payment);
+    if (!res.ok) {
+      alert(data.error || "Billing failed");
+      return;
+    }
 
-  alert(`Bill Generated!\nSale ID: ${data.sale_id}`);
+    generateInvoicePDF(
+      data.sale_id,
+      name,
+      phone,
+      cart,
+      data.total,
+      payment
+    );
 
-  cart = [];
-  renderCart();
-  loadProducts();
+    alert(`✅ Bill Generated\nSale ID: ${data.sale_id}`);
+
+    cart = [];
+    renderCart();
+    loadProducts();
+
+  } catch (err) {
+    alert("❌ Server error");
+  }
 }
 
-// --------------------
+// ================================
 // PDF INVOICE
-// --------------------
+// ================================
 function generateInvoicePDF(id, name, phone, items, total, payment) {
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF();
 
   let y = 20;
+
   doc.setFontSize(18);
-  doc.text("Smart Retail Invoice", 20, y);
+  doc.text("Smart Retail POS Invoice", 20, y);
   y += 10;
 
   doc.setFontSize(12);
   doc.text(`Sale ID: ${id}`, 20, y); y += 8;
   doc.text(`Customer: ${name}`, 20, y); y += 8;
   doc.text(`Phone: ${phone}`, 20, y); y += 8;
-  doc.text(`Payment: ${payment}`, 20, y); y += 10;
+  doc.text(`Payment Mode: ${payment}`, 20, y); y += 10;
 
-  doc.text("Items:", 20, y); y += 8;
+  doc.text("Items:", 20, y);
+  y += 8;
 
-  items.forEach(i => {
-    doc.text(`${i.name} × ${i.quantity} = ₹${i.price * i.quantity}`, 20, y);
+  items.forEach(item => {
+    doc.text(
+      `${item.name} × ${item.quantity} = ₹${item.price * item.quantity}`,
+      20,
+      y
+    );
     y += 7;
   });
 
@@ -135,4 +194,7 @@ function generateInvoicePDF(id, name, phone, items, total, payment) {
   doc.save(`invoice_${id}.pdf`);
 }
 
+// ================================
+// INIT
+// ================================
 window.onload = loadProducts;
