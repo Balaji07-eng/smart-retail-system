@@ -153,83 +153,67 @@ def bill():
     return {"sale_id": sale_id, "total": total}
 
 # ---------------- ANALYTICS ----------------
+# ================================
+# ANALYTICS
+# ================================
+
 @app.route("/analytics/summary")
-def summary():
+def analytics_summary():
     conn = connect_db()
     c = conn.cursor()
+
     c.execute("SELECT COUNT(*), SUM(total) FROM sales")
-    sales, revenue = c.fetchone()
+    total_sales, total_revenue = c.fetchone()
+
     conn.close()
+    return jsonify({
+        "total_sales": total_sales or 0,
+        "total_revenue": total_revenue or 0
+    })
 
-    return {
-        "total_sales": sales or 0,
-        "total_revenue": revenue or 0
-    }
 
-@app.route("/analytics/trend/<period>")
-def trend(period):
-    conn = connect_db()
-    c = conn.cursor()
-
-    query = {
-        "weekly": "strftime('%W', created_at)",
-        "monthly": "strftime('%m', created_at)",
-        "yearly": "strftime('%Y', created_at)"
-    }[period]
-
-    c.execute(f"""
-        SELECT {query}, SUM(total)
-        FROM sales
-        GROUP BY {query}
-    """)
-
-    rows = c.fetchall()
-    conn.close()
-
-    return jsonify([
-        {"label": r[0], "revenue": r[1]}
-        for r in rows
-    ])
-
-@app.route("/analytics/low-stock")
-def low_stock():
-    conn = connect_db()
-    c = conn.cursor()
-    c.execute("SELECT * FROM products WHERE stock <= 5")
-    rows = c.fetchall()
-    conn.close()
-
-    return jsonify([
-        {"id": r[0], "name": r[1], "stock": r[3]}
-        for r in rows
-    ])
-
-@app.route("/analytics/stock-prediction")
-def stock_prediction():
+@app.route("/analytics/trend")
+def analytics_trend():
     conn = connect_db()
     c = conn.cursor()
 
     c.execute("""
-    SELECT p.id, p.name, IFNULL(SUM(si.quantity)/7,0) avg_daily, p.stock
-    FROM products p
-    LEFT JOIN sale_items si ON p.id = si.product_id
-    GROUP BY p.id
+        SELECT DATE(created_at), SUM(total)
+        FROM sales
+        GROUP BY DATE(created_at)
+        ORDER BY DATE(created_at)
     """)
+
     rows = c.fetchall()
     conn.close()
 
-    result = []
-    for r in rows:
-        recommended = int(r[2] * 7)
-        result.append({
-            "product_id": r[0],
-            "name": r[1],
-            "avg_daily_sales": round(r[2], 2),
-            "current_stock": r[3],
-            "recommended_stock": recommended
-        })
+    return jsonify([
+        {"date": r[0], "revenue": r[1]}
+        for r in rows
+    ])
 
-    return jsonify(result)
+
+@app.route("/analytics/top-products")
+def top_products():
+    conn = connect_db()
+    c = conn.cursor()
+
+    c.execute("""
+        SELECT p.name, SUM(si.quantity)
+        FROM sale_items si
+        JOIN products p ON p.id = si.product_id
+        GROUP BY p.name
+        ORDER BY SUM(si.quantity) DESC
+    """)
+
+    rows = c.fetchall()
+    conn.close()
+
+    return jsonify([
+        {"product": r[0], "quantity_sold": r[1]}
+        for r in rows
+    ])
+
 
 # ---------------- RUN ----------------
 if __name__ == "__main__":
